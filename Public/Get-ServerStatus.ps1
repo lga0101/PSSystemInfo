@@ -1,6 +1,6 @@
 ﻿<#
 .SYNOPSIS
-    Get-ServerStatus.ps1 - Test an RPC and RDP connection against one or more computer(s)
+    Get-ServerStatus.ps1 - Test an RPC and RDP connection against one or more computers
 .DESCRIPTION
     Get-ServerStatus.ps1 - Test an RPC connection (WMI request) against one or more computer(s)
     with test-connection before to see if the computer is reachable or not first
@@ -26,9 +26,10 @@ function Get-ServerStatus {
 Param(
 
     [Parameter(Mandatory = $true, ParameterSetName = 'ByComputerList')]
-    $ComputerList,
+    [array]$ComputerList,
     
     [Parameter(Mandatory = $true, ParameterSetName = 'ByComputerName')]
+    [array]
     $ComputerName,
 
     <#
@@ -48,42 +49,31 @@ Param(
     
     )
 
+$ReportsDir = "G:\My Documents\Reports\"
+
+if (!(Test-Path $ReportsDir)) {
+    New-Item -Path "G:\My Documents\Reports\" -ItemType Directory | Out-Null 
+    }
+
 #Temporarily dot source other functions until module is finished
 
 try {
-    . "C:\backup\Scripts\PSSystemInfo\Public\Get-Uptime.ps1"
+    . "G:\My Documents\GitHub\PSSystemInfo\Public\Get-Uptime.ps1"
+    . "G:\My Documents\GitHub\PSSystemInfo\Public\Get-PendingReboot.ps1"
 }
 catch {
-    Write-Host "Uptime module not loaded.  Error: $_"
+    Write-Host "Dot sourced module(s) not loaded.  Error: $_"
 }
-
-#Import-Module .\Get-PendingReboot.ps1
-
-
-#If list is specified, try to get content from that list
-
-<#
-if ($List) {
-$ComputerName = (Get-Content $List)
-#$ComputerName = (Read-Host "Please enter the path to the computer list")
-#$ComputerName = Get-Content $ComputerName
-}
-#>
 
 if ($PSCmdlet.ParameterSetName -eq 'ByComputerList') {
-$ComputerName = (Get-Content $ComputerList)
-#foreach ($pc in $ComputerName)
-#{Write-Host $pc}
-#$ComputerName | gm
-#$ComputerName = (Read-Host "Please enter the path to the computer list")
-#$ComputerName = Get-Content $ComputerName
+
+$ComputerName = (Get-Content $ComputerList) 
 }
 
-
-
 if ($User -eq $null -and $Pass -eq $null) { 
-Write-Host "debug null user"
-$User = Read-Host "Enter Username"
+#Write-Host "debug null user"
+#$User = Read-Host "Enter Username"
+$User = (whoami)
 $Pass = Read-Host "Enter Password" -AsSecureString
 #$Secpasswd = ConvertTo-SecureString $Pass -Force 
 $Mycreds = New-Object System.Management.Automation.PSCredential ($User, $Pass) 
@@ -92,11 +82,11 @@ if ($User -ne $null -and $Pass -eq $null) {
 $Pass = Read-Host "Enter Password" -AsSecureString
 $Mycreds = New-Object System.Management.Automation.PSCredential ($User, $Pass)
 }
-else {
-Write-Host "debug non null user"
-$Secpasswd = ConvertTo-SecureString $Pass -AsPlainText -Force 
-$Mycreds = New-Object System.Management.Automation.PSCredential ($User, $Secpasswd)
-}
+#else {
+#Write-Host "debug non null user"
+#$Secpasswd = ConvertTo-SecureString $Pass -AsPlainText -Force 
+#$Mycreds = New-Object System.Management.Automation.PSCredential ($User, $Secpasswd)
+#}
 
 #Create an empty array for our end results
 $Results = @()
@@ -118,7 +108,11 @@ ForEach ($Computer in $ComputerName) {
     $Result | Add-Member -MemberType NoteProperty -Name "Hostname" -Value $Computer
     #Write-Host "Starting $Computer test"
     if (Test-Connection -ComputerName $Computer -Quiet -Count 1) {
+        
+        
+        
         $Result | Add-Member -MemberType NoteProperty -Name "Ping Result" -Value "OK"
+        
         if (!($OptionalPort)) {
             }
         elseif ($OptionalPort -eq '80') {
@@ -142,10 +136,13 @@ ForEach ($Computer in $ComputerName) {
         #Write-Host "Warning: No current checks for port $OptionalPort" -ForegroundColor Yellow
         }
 
-             
+
+try {
+        (New-Object System.Net.Sockets.TCPClient -ArgumentList "$Computer",135 -ErrorAction Stop)
+        $RPCOnline = $true             
         if ($Computer -eq "localhost") {        
             try {
-                (Get-WmiObject win32_computersystem -ComputerName $Computer -ErrorAction SilentlyContinue | Out-Null)
+                (Get-WmiObject win32_computersystem -ComputerName $Computer -ErrorAction Stop )
                 #Write-Host "RPC connection on computer $Computer successful." -ForegroundColor Green;
                 $Result | Add-Member -MemberType NoteProperty -Name "RPC" -Value "Online"
                 }
@@ -156,47 +153,81 @@ ForEach ($Computer in $ComputerName) {
             }
         else {
             try {
-                (Get-WmiObject win32_computersystem -ComputerName $Computer -ErrorAction SilentlyContinue -Credential $Mycreds | Out-Null)
+                (Get-WmiObject win32_computersystem -ComputerName $Computer -Credential $Mycreds -ErrorAction Stop)
                 #Write-Host "RPC connection on computer $Computer successful." -ForegroundColor Green;
                 $Result | Add-Member -MemberType NoteProperty -Name "RPC" -Value "Online"
+                #$Results += $Result       
                 }
             catch {
                 #Write-Host "RPC connection on computer $Computer failed: $_" -ForegroundColor Red
                 $Result | Add-Member -MemberType NoteProperty -Name "RPC" -Value "Error: $_"
+                #$Results += $Result       
                 }
                }
+}
+catch {
+$Result | Add-Member -MemberType NoteProperty -Name "RPC" -Value "Error: $_"
+$RPCOnline = $false
+}
 
        try {
-       (New-Object System.Net.Sockets.TCPClient -ArgumentList "$Computer",3389 -ErrorAction SilentlyContinue | Out-Null)
+       (New-Object System.Net.Sockets.TCPClient -ArgumentList "$Computer",3389 -ErrorAction Stop | Out-Null)
        #Write-Host "RDP is responsive on $Computer" -ForegroundColor Green
        $Result | Add-Member -MemberType NoteProperty -Name "RDP" -Value "Up"
+       #$Results += $Result       
        }
        catch {
        #Write-Host "RDP is down on $Computer" -ForegroundColor Red
        $Result | Add-Member -MemberType NoteProperty -Name "RDP" -Value "Down"
        }
-       
+
+
+if ($RPCOnline -eq $true) {
        try {
-       #(Get-Command Get-Uptime)
+       Get-Uptime -ComputerName $Computer -ErrorAction Stop
        $uptime = (Get-Uptime -ComputerName $Computer)
-       #Write-Host "$Computer has been up for $uptime"
-      
        $Result | Add-Member -MemberType NoteProperty -Name "System Uptime" -Value $uptime
-       $Results += $Result       
-       $Results | Export-Csv -NoTypeInformation -Path "C:\backup\Reports\$Reportname"
+       }
        
+       catch {
+       $Result | Add-Member -MemberType NoteProperty -Name "System Uptime" -Value $_
+       }
+    }
+else {
+       $Result | Add-Member -MemberType NoteProperty -Name "System Uptime" -Value "Unknown"
+}
+
+       try {
+       Get-PendingReboot -ComputerName $Computer -ErrorAction Stop
+       $PendingReboot = Get-PendingReboot -ComputerName $Computer
        }
        catch {
-       Write-Host $_
+       $Result | Add-Member -MemberType NoteProperty -Name "Reboot Required" -Value $_
        }
-    
+
+       if ($PendingReboot -eq "True") {
+       $Result | Add-Member -MemberType NoteProperty -Name "Reboot Required" -Value 'True'
+       }
+       elseif ($PendingReboot -eq 'False') {
+       $Result | Add-Member -MemberType NoteProperty -Name "Reboot Required" -Value 'False'
+       }
+       elseif ($PendingReboot -ne $exception)  {
+       $Result | Add-Member -MemberType NoteProperty -Name "Reboot Required" -Value 'Unknown'
+       }
+       #Write-Host "$Computer needs a reboot? $PendingReboot" 
     }
     else {
             #Write-Host "$Computer doesn't even respond to ping... `r" -ForegroundColor Red;
             $Result | Add-Member -MemberType NoteProperty -Name "Ping Result" -Value "Failed"
-            $Results += $Result
-            $Results | Export-Csv -NoTypeInformation -Path "C:\backup\Reports\$Reportname"
-        }
-       
+            #$Results += $Result
+            #$Results | Export-Csv -NoTypeInformation -Path "$ReportsDir\$Reportname"
+            }
+$Results += $Result
 }
+#Write-Host $Computer
+#$Results
+
+#Write the results to the array and export to the reports path
+
+$Results | Export-Csv -NoTypeInformation -Path "$ReportsDir\$Reportname"       
 }
