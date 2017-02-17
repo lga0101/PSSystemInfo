@@ -1,13 +1,13 @@
 #Get public and private function definition files.
-    $Public  = @( Get-ChildItem -Path .\Public\*.ps1 -ErrorAction SilentlyContinue )
-    $Private = @( Get-ChildItem -Path .\Private\*.ps1 -ErrorAction SilentlyContinue )
+    $Public  = @( Get-ChildItem -Path .\Public\*.ps1  )
+    $Private = @( Get-ChildItem -Path .\Private\*.ps1  )
 
 #Dot source the files
     Foreach($import in @($Public + $Private))
     {
         Try
         {
-            . $import.fullname
+            . "$import"
         }
         Catch
         {
