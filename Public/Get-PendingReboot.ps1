@@ -4,7 +4,10 @@
 Param(
     
     [Parameter(Mandatory = $true)]
-    $ComputerName
+    $ComputerName,
+
+    [Parameter()]
+    $Credential
     )
 
 
@@ -52,7 +55,12 @@ $CompPendRen = $true
 
 try {
 (New-Object System.Net.Sockets.TCPClient -ArgumentList "$ComputerName",5985 -ErrorAction Stop | Out-Null)             
+if ($Credential -eq $null) {
 Invoke-Command -ComputerName $ComputerName -ScriptBlock $RebootCheck -ArgumentList $ComputerName 
+}
+else {
+     Invoke-Command -ComputerName $ComputerName -ScriptBlock $RebootCheck -ArgumentList $ComputerName -Credential $Credential   
+    }
 }
 catch {
 Return "Error: $_"

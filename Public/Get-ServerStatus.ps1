@@ -45,17 +45,27 @@ Param(
     $Pass,
 
     [Parameter()]
+    [string[]]
+    $ExportPath,
+
+    [Parameter()]
     [int32]$OptionalPort 
     
     )
 
-$ReportsDir = "G:\My Documents\Reports\"
+if ($ExportPath -eq $null) {
+$WriteReport = $false
+}
+else {
+$ReportsDir = $ExportPath
+$WriteReport = $true
+}
 
-if (!(Test-Path $ReportsDir)) {
-    New-Item -Path "G:\My Documents\Reports\" -ItemType Directory | Out-Null 
+if (!(Test-Path $ReportsDir) -and $WriteReport -eq $true) {
+    New-Item -Path $ReportsDir -ItemType Directory | Out-Null 
     }
 
-#Temporarily dot source other functions until module is finished
+<#Temporarily dot source other functions until module is finished
 
 try {
     . "G:\My Documents\GitHub\PSSystemInfo\Public\Get-Uptime.ps1"
@@ -64,6 +74,7 @@ try {
 catch {
     Write-Host "Dot sourced module(s) not loaded.  Error: $_"
 }
+#>
 
 if ($PSCmdlet.ParameterSetName -eq 'ByComputerList') {
 
@@ -73,12 +84,6 @@ $ComputerName = (Get-Content $ComputerList)
 $RunAsUser = $null
 
 if ($User -eq $null -and $Pass -eq $null) { 
-#Write-Host "debug null user"
-#$User = Read-Host "Enter Username"
-#$User = (whoami)
-#$Pass = Read-Host "Enter Password" -AsSecureString
-#$Secpasswd = ConvertTo-SecureString $Pass -Force 
-#$Mycreds = New-Object System.Management.Automation.PSCredential ($User, $Pass) 
 $RunAsUser = $True
 }
 if ($User -ne $null -and $Pass -eq $null) {
@@ -181,9 +186,8 @@ $RPCOnline = $false
        }
 
 
-if ($RPCOnline -eq $true) {
+if ($RPCOnline -eq $true -and $RunAsUser -eq $True) {
        try {
-       #Get-Uptime -ComputerName $Computer -ErrorAction Stop
        $uptime = (Get-Uptime -ComputerName $Computer)
        $Result | Add-Member -MemberType NoteProperty -Name "System Uptime" -Value $uptime
        }
@@ -192,6 +196,17 @@ if ($RPCOnline -eq $true) {
        $Result | Add-Member -MemberType NoteProperty -Name "System Uptime" -Value $_
        }
     }
+elseif ($RPCOnline -eq $true) {
+       
+       try {
+       $uptime = (Get-Uptime -ComputerName $Computer -Credential $Mycreds )
+       $Result | Add-Member -MemberType NoteProperty -Name "System Uptime" -Value $uptime
+       }
+       
+       catch {
+       $Result | Add-Member -MemberType NoteProperty -Name "System Uptime" -Value $_
+       }
+}
 else {
        $Result | Add-Member -MemberType NoteProperty -Name "System Uptime" -Value "Unknown"
 }
@@ -199,7 +214,9 @@ else {
        #Clear pending reboot to avoid false positives
        
        $PendingReboot = $null 
-       
+
+
+if ($Mycreds -eq $null) {       
        try {
        (Get-PendingReboot -ComputerName $Computer -ErrorAction Stop | Out-Null)
        $PendingReboot = (Get-PendingReboot -ComputerName $Computer -ErrorAction Stop)
@@ -207,7 +224,17 @@ else {
        catch {
        $Result | Add-Member -MemberType NoteProperty -Name "Reboot Required" -Value $_
        }
+    }
 
+else {       
+       try {
+       (Get-PendingReboot -ComputerName $Computer -Credential $mycreds -ErrorAction Stop | Out-Null)
+       $PendingReboot = (Get-PendingReboot -ComputerName $Computer -Credential $mycreds -ErrorAction Stop)
+       }
+       catch {
+       $Result | Add-Member -MemberType NoteProperty -Name "Reboot Required" -Value $_
+       }
+    }
        
        if ($PendingReboot -eq "True") {
        $Result | Add-Member -MemberType NoteProperty -Name "Reboot Required" -Value 'True'
@@ -218,9 +245,8 @@ else {
        else {
        $Result | Add-Member -MemberType NoteProperty -Name "Reboot Required" -Value $PendingReboot
        }
-       #Write-Host "Was needs reboot captured? $NeedsReboot" 
-       #Write-Host "$Computer needs a reboot? $PendingReboot" 
-    }
+  
+}
     else {
             # Computer doesn't even respond to ping..."
             $Result | Add-Member -MemberType NoteProperty -Name "Ping Result" -Value "Failed"
@@ -235,6 +261,15 @@ $Results += $Result
 # End for loop on the computer array
 
 # Export the array to the CSV report
+
+$ExportPath
+
+if ($WriteReport -eq $true) {
 $Results | Export-Csv -NoTypeInformation -Path "$ReportsDir\$Reportname"       
+Write-Host "Report exported to $ReportsDir\$Reportname"
+}
+else {
+$Results
+}
 
 }
