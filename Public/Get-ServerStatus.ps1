@@ -5,7 +5,7 @@
     Get-ServerStatus.ps1 - Test an RPC connection (WMI request) against one or more computer(s)
     with test-connection before to see if the computer is reachable or not first
 .PARAMETER ComputerName
-    Defines the computer name or IP address to tet the RPC connection. Could be an array of servernames
+    Defines the computer name or IP address to test the RPC connection. Could be an array of servernames
     Mandatory parameter.
 .NOTES
     File Name    : Get-ServerStatus.ps1
@@ -138,11 +138,11 @@ ForEach ($Computer in $ComputerName) {
 
 
 try {
-        (New-Object System.Net.Sockets.TCPClient -ArgumentList "$Computer",135 -ErrorAction Stop)
+        (New-Object System.Net.Sockets.TCPClient -ArgumentList "$Computer",135 -ErrorAction Stop | Out-Null)
         $RPCOnline = $true             
         if ($Computer -eq "localhost") {        
             try {
-                (Get-WmiObject win32_computersystem -ComputerName $Computer -ErrorAction Stop )
+                (Get-WmiObject win32_computersystem -ComputerName $Computer -ErrorAction Stop | Out-Null)
                 #Write-Host "RPC connection on computer $Computer successful." -ForegroundColor Green;
                 $Result | Add-Member -MemberType NoteProperty -Name "RPC" -Value "Online"
                 }
@@ -153,7 +153,7 @@ try {
             }
         else {
             try {
-                (Get-WmiObject win32_computersystem -ComputerName $Computer -Credential $Mycreds -ErrorAction Stop)
+                (Get-WmiObject win32_computersystem -ComputerName $Computer -Credential $Mycreds -ErrorAction Stop | Out-Null)
                 #Write-Host "RPC connection on computer $Computer successful." -ForegroundColor Green;
                 $Result | Add-Member -MemberType NoteProperty -Name "RPC" -Value "Online"
                 #$Results += $Result       
@@ -184,7 +184,7 @@ $RPCOnline = $false
 
 if ($RPCOnline -eq $true) {
        try {
-       Get-Uptime -ComputerName $Computer -ErrorAction Stop
+       #Get-Uptime -ComputerName $Computer -ErrorAction Stop
        $uptime = (Get-Uptime -ComputerName $Computer)
        $Result | Add-Member -MemberType NoteProperty -Name "System Uptime" -Value $uptime
        }
@@ -198,34 +198,33 @@ else {
 }
 
        try {
-       Get-PendingReboot -ComputerName $Computer -ErrorAction Stop
-       $PendingReboot = Get-PendingReboot -ComputerName $Computer
+       (Get-PendingReboot -ComputerName $Computer -ErrorAction Stop | Out-Null)
+       $PendingReboot = (Get-PendingReboot -ComputerName $Computer -ErrorAction Stop)
        }
        catch {
        $Result | Add-Member -MemberType NoteProperty -Name "Reboot Required" -Value $_
        }
 
-       if ($PendingReboot -eq "True") {
-       $Result | Add-Member -MemberType NoteProperty -Name "Reboot Required" -Value 'True'
+       #Write-Host "Pending Reboot is $PendingReboot"
+
+       if ($PendingReboot -eq $true) {
+       $Result | Add-Member -MemberType NoteProperty -Name "Reboot Required" -Value "True"
        }
-       elseif ($PendingReboot -eq 'False') {
-       $Result | Add-Member -MemberType NoteProperty -Name "Reboot Required" -Value 'False'
+       elseif ($PendingReboot -eq $false) {
+       $Result | Add-Member -MemberType NoteProperty -Name "Reboot Required" -Value "False"
        }
        elseif ($PendingReboot -ne $exception)  {
        $Result | Add-Member -MemberType NoteProperty -Name "Reboot Required" -Value 'Unknown'
        }
+       #Write-Host "Was needs reboot captured? $NeedsReboot" 
        #Write-Host "$Computer needs a reboot? $PendingReboot" 
     }
     else {
-            #Write-Host "$Computer doesn't even respond to ping... `r" -ForegroundColor Red;
+            # Computer doesn't even respond to ping..."
             $Result | Add-Member -MemberType NoteProperty -Name "Ping Result" -Value "Failed"
-            #$Results += $Result
-            #$Results | Export-Csv -NoTypeInformation -Path "$ReportsDir\$Reportname"
             }
 $Results += $Result
 }
-#Write-Host $Computer
-#$Results
 
 #Write the results to the array and export to the reports path
 

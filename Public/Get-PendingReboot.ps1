@@ -7,14 +7,15 @@ Param(
     $ComputerName
     )
 
-$CBSRebootPend,$WUAURebootReq,$CompPendRen = $null
+
 
 [ScriptBlock]$RebootCheck = {
 
 param($computer) $Computername
 
+$CBSRebootPend,$WUAURebootReq = $null
 $CompPendRen = $false
-$CBSRebootPend = $null
+
 
 $HKLM = [UInt32] "0x80000002" 
 $WMI_Reg = [WMIClass] "\\$Computer\root\default:StdRegProv" 
@@ -28,27 +29,33 @@ $WUAURebootReq = $RegWUAURebootReq.sNames -contains "RebootRequired"
 
 $ActCompNm = $WMI_Reg.GetStringValue($HKLM,"SYSTEM\CurrentControlSet\Control\ComputerName\ActiveComputerName\","ComputerName")       
 $CompNm = $WMI_Reg.GetStringValue($HKLM,"SYSTEM\CurrentControlSet\Control\ComputerName\ComputerName\","ComputerName") 
-}
 
 If ($ActCompNm -ne $CompNm) { 
 $CompPendRen = $true 
 } 
 
-If ($CBSRebootPend -or $WUAURebootReq -or $CompPendRen -eq $true) {
-    Return "True"
-    }
-ElseIf ($CBSRebootPend -or $WUAURebootReq -or $CompPendRen -eq $false) {
-    Return "False"
-    }
-Else {
+#Write-Host "End of scriptblock..$CBSRebootPend,$WUAURebootReq,$CompPendRen"
 }
 
-try {
 
-(New-Object System.Net.Sockets.TCPClient -ArgumentList "$ComputerName",5985 -ErrorAction Stop)             
+
+try {
+(New-Object System.Net.Sockets.TCPClient -ArgumentList "$ComputerName",5985 -ErrorAction Stop | Out-Null)             
 Invoke-Command -ComputerName $ComputerName -ScriptBlock $RebootCheck -ArgumentList $ComputerName 
 }
 catch {
-$error = $_
+Return "Error: $_"
+}
+
+If ($CBSRebootPend,$WUAURebootReq,$CompPendRen -eq $True) {
+    $NeedsReboot = "True"
+    Return "True"
+    }
+ElseIf ($CBSRebootPend,$WUAURebootReq,$CompPendRen -eq $False) {
+    $NeedsReboot = "False"
+    Return "False"
+    }
+Else {
+    Return "Unknown"  
 }
 }
