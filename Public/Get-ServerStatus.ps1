@@ -70,23 +70,21 @@ if ($PSCmdlet.ParameterSetName -eq 'ByComputerList') {
 $ComputerName = (Get-Content $ComputerList) 
 }
 
+$RunAsUser = $null
+
 if ($User -eq $null -and $Pass -eq $null) { 
 #Write-Host "debug null user"
 #$User = Read-Host "Enter Username"
-$User = (whoami)
-$Pass = Read-Host "Enter Password" -AsSecureString
+#$User = (whoami)
+#$Pass = Read-Host "Enter Password" -AsSecureString
 #$Secpasswd = ConvertTo-SecureString $Pass -Force 
-$Mycreds = New-Object System.Management.Automation.PSCredential ($User, $Pass) 
+#$Mycreds = New-Object System.Management.Automation.PSCredential ($User, $Pass) 
+$RunAsUser = $True
 }
 if ($User -ne $null -and $Pass -eq $null) {
 $Pass = Read-Host "Enter Password" -AsSecureString
 $Mycreds = New-Object System.Management.Automation.PSCredential ($User, $Pass)
 }
-#else {
-#Write-Host "debug non null user"
-#$Secpasswd = ConvertTo-SecureString $Pass -AsPlainText -Force 
-#$Mycreds = New-Object System.Management.Automation.PSCredential ($User, $Secpasswd)
-#}
 
 #Create an empty array for our end results
 $Results = @()
@@ -96,7 +94,8 @@ $time = (Get-Date -UFormat %H.%M.%S)
 $Reportname = "ServerStatusReport_" + (Get-Date -Format MM.dd.yyyy) + "_$time.csv"
 
 
-#Begin forloop on the computer array
+# Begin for loop on the computer array
+
 ForEach ($Computer in $ComputerName) {
     
     #Create an object to hold each machine's results
@@ -140,7 +139,7 @@ ForEach ($Computer in $ComputerName) {
 try {
         (New-Object System.Net.Sockets.TCPClient -ArgumentList "$Computer",135 -ErrorAction Stop | Out-Null)
         $RPCOnline = $true             
-        if ($Computer -eq "localhost") {        
+        if ($Computer -eq "localhost" -or $RunAsUser -eq $True) {        
             try {
                 (Get-WmiObject win32_computersystem -ComputerName $Computer -ErrorAction Stop | Out-Null)
                 #Write-Host "RPC connection on computer $Computer successful." -ForegroundColor Green;
@@ -196,7 +195,11 @@ if ($RPCOnline -eq $true) {
 else {
        $Result | Add-Member -MemberType NoteProperty -Name "System Uptime" -Value "Unknown"
 }
-
+       
+       #Clear pending reboot to avoid false positives
+       
+       $PendingReboot = $null 
+       
        try {
        (Get-PendingReboot -ComputerName $Computer -ErrorAction Stop | Out-Null)
        $PendingReboot = (Get-PendingReboot -ComputerName $Computer -ErrorAction Stop)
@@ -205,16 +208,15 @@ else {
        $Result | Add-Member -MemberType NoteProperty -Name "Reboot Required" -Value $_
        }
 
-       #Write-Host "Pending Reboot is $PendingReboot"
-
-       if ($PendingReboot -eq $true) {
-       $Result | Add-Member -MemberType NoteProperty -Name "Reboot Required" -Value "True"
+       
+       if ($PendingReboot -eq "True") {
+       $Result | Add-Member -MemberType NoteProperty -Name "Reboot Required" -Value 'True'
        }
-       elseif ($PendingReboot -eq $false) {
-       $Result | Add-Member -MemberType NoteProperty -Name "Reboot Required" -Value "False"
+       elseif ($PendingReboot -eq "False") {
+       $Result | Add-Member -MemberType NoteProperty -Name "Reboot Required" -Value 'False'
        }
-       elseif ($PendingReboot -ne $exception)  {
-       $Result | Add-Member -MemberType NoteProperty -Name "Reboot Required" -Value 'Unknown'
+       else {
+       $Result | Add-Member -MemberType NoteProperty -Name "Reboot Required" -Value $PendingReboot
        }
        #Write-Host "Was needs reboot captured? $NeedsReboot" 
        #Write-Host "$Computer needs a reboot? $PendingReboot" 
@@ -223,10 +225,16 @@ else {
             # Computer doesn't even respond to ping..."
             $Result | Add-Member -MemberType NoteProperty -Name "Ping Result" -Value "Failed"
             }
+
+# Write this machine's results to the array    
+ 
 $Results += $Result
+
 }
 
-#Write the results to the array and export to the reports path
+# End for loop on the computer array
 
+# Export the array to the CSV report
 $Results | Export-Csv -NoTypeInformation -Path "$ReportsDir\$Reportname"       
+
 }

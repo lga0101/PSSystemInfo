@@ -34,7 +34,18 @@ If ($ActCompNm -ne $CompNm) {
 $CompPendRen = $true 
 } 
 
-#Write-Host "End of scriptblock..$CBSRebootPend,$WUAURebootReq,$CompPendRen"
+    If ($CBSRebootPend,$WUAURebootReq,$CompPendRen -eq $True) {
+        #Return $CBSRebootPend,$WUAURebootReq,$CompPendRen
+        Return "True"
+        }
+    ElseIf ($CBSRebootPend,$WUAURebootReq,$CompPendRen -eq $False) {
+        #Return $CBSRebootPend,$WUAURebootReq,$CompPendRen
+        Return "False"
+        }
+    Else {
+        #Return $CBSRebootPend,$WUAURebootReq,$CompPendRen
+        Return "Unknown"
+        }
 }
 
 
@@ -45,17 +56,5 @@ Invoke-Command -ComputerName $ComputerName -ScriptBlock $RebootCheck -ArgumentLi
 }
 catch {
 Return "Error: $_"
-}
-
-If ($CBSRebootPend,$WUAURebootReq,$CompPendRen -eq $True) {
-    $NeedsReboot = "True"
-    Return "True"
-    }
-ElseIf ($CBSRebootPend,$WUAURebootReq,$CompPendRen -eq $False) {
-    $NeedsReboot = "False"
-    Return "False"
-    }
-Else {
-    Return "Unknown"  
 }
 }
