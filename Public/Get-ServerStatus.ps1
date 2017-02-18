@@ -118,6 +118,8 @@ ForEach ($Computer in $ComputerName) {
         
         $Result | Add-Member -MemberType NoteProperty -Name "Ping Result" -Value "OK"
         
+
+        <# Commenting out the optional port code - will move to seperate function #
         if (!($OptionalPort)) {
             }
         elseif ($OptionalPort -eq '80') {
@@ -139,8 +141,40 @@ ForEach ($Computer in $ComputerName) {
         }
         else {
         #Write-Host "Warning: No current checks for port $OptionalPort" -ForegroundColor Yellow
-        }
+    }
+    #>
 
+
+
+
+    <#   Testing timout config 
+    
+
+    [ScriptBlock]$tcptest {
+    $tcpobject = new-Object system.Net.Sockets.TcpClient 
+    #Connect to remote machine's port               
+    $connect = $tcpobject.BeginConnect($computer,$tcpport,$null,$null) 
+    #Configure a timeout before quitting - time in milliseconds 
+    $wait = $connect.AsyncWaitHandle.WaitOne(1000,$false) 
+        If (-Not $Wait) {
+            Write-Host 'Timeout'
+            $RPCOnline = $false
+    } Else {
+    $error.clear()
+    $tcpobject.EndConnect($connect) | out-Null 
+    If ($Error[0]) {
+        Write-warning ("{0}" -f $error[0].Exception.Message)
+    } Else {
+        'Port open!'
+        $RPCOnline = $true
+        }
+    }
+}
+
+    
+    #>
+
+$tcpport = '135'
 
 try {
         (New-Object System.Net.Sockets.TCPClient -ArgumentList "$Computer",135 -ErrorAction Stop | Out-Null)
