@@ -54,6 +54,7 @@ Param(
     )
 
 if ($ExportPath -eq $null) {
+$ReportsDir = $ExportPath
 $WriteReport = $false
 }
 else {
@@ -61,7 +62,7 @@ $ReportsDir = $ExportPath
 $WriteReport = $true
 }
 
-if (!(Test-Path $ReportsDir) -and $WriteReport -eq $true) {
+if ($WriteReport -eq $true -and (!(Test-Path $ReportsDir)) ) {
     New-Item -Path $ReportsDir -ItemType Directory | Out-Null 
     }
 
