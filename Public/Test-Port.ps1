@@ -81,6 +81,8 @@ $failed = $Null
 $report += $temp                   
 }       
                    
+#Write-Host "Writing..." -BackgroundColor DarkGreen
 
-$report
+$report | ft *
+
 }
