@@ -80,6 +80,7 @@ catch {
 if ($PSCmdlet.ParameterSetName -eq 'ByComputerList') {
 
 $ComputerName = (Get-Content $ComputerList) 
+
 }
 
 $RunAsUser = $null
@@ -147,38 +148,56 @@ ForEach ($Computer in $ComputerName) {
 
 
 
-    <#   Testing timout config 
-    
+$tcpport = '135'
+#$Computer = "VSMSKPAUTO1"
+$Computer = "badtest"
 
-    [ScriptBlock]$tcptest {
-    $tcpobject = new-Object system.Net.Sockets.TcpClient 
+    #   Testing timout config 
+    
+<#
+    [ScriptBlock]$tcptest = {
+    $tcpobject = New-Object System.Net.Sockets.TcpClient 
     #Connect to remote machine's port               
-    $connect = $tcpobject.BeginConnect($computer,$tcpport,$null,$null) 
+    try {
+    $connect = Invoke-Command $tcpobject.BeginConnect($computer,$tcpport,$null,$null) -ErrorAction Stop
     #Configure a timeout before quitting - time in milliseconds 
     $wait = $connect.AsyncWaitHandle.WaitOne(1000,$false) 
         If (-Not $Wait) {
-            Write-Host 'Timeout'
-            $RPCOnline = $false
+            Return $false
     } Else {
     $error.clear()
     $tcpobject.EndConnect($connect) | out-Null 
     If ($Error[0]) {
-        Write-warning ("{0}" -f $error[0].Exception.Message)
-    } Else {
-        'Port open!'
-        $RPCOnline = $true
+        #Write-warning ("{0}" -f $error[0].Exception.Message)
+    } 
+    Else {
+        Return $true
         }
-    }
-}
-
+        }
+        }
     
-    #>
+    catch {
+    $RPCOnline = $false
+    Return $false
+    #Write-host $_
+    }
+    $tcpobject = $null
+}
+#>
 
-$tcpport = '135'
+$result = $null
+$Result = New-Object System.Object
+
+
+#temp line
+#Invoke-Command -ScriptBlock $tcptest -ArgumentList $Computer,$tcpport -OutVariable $RPCOnline -ErrorAction Stop
 
 try {
-        (New-Object System.Net.Sockets.TCPClient -ArgumentList "$Computer",135 -ErrorAction Stop | Out-Null)
-        $RPCOnline = $true             
+        (Invoke-Command -ScriptBlock $tcptest -ArgumentList $Computer,$tcpport -OutVariable $RPCOnline -ErrorAction Stop)
+        #$RPCOnline | Out-Null
+        #$RPCOnline = (Invoke-Command -ScriptBlock $tcptest -ArgumentList $Computer,$tcpport -ErrorAction Stop)
+        #(New-Object System.Net.Sockets.TCPClient -ArgumentList "$Computer",135 -ErrorAction Stop | Out-Null)
+        #$RPCOnline = $true             
         if ($Computer -eq "localhost" -or $RunAsUser -eq $True) {        
             try {
                 (Get-WmiObject win32_computersystem -ComputerName $Computer -ErrorAction Stop | Out-Null)
@@ -205,9 +224,12 @@ try {
                }
 }
 catch {
-$Result | Add-Member -MemberType NoteProperty -Name "RPC" -Value "Error: $_"
+#$Result | Add-Member -MemberType NoteProperty -Name "RPC" -Value "Error: $_"
+$Result | Add-Member -MemberType NoteProperty -Name "RPC" -Value "Error: Port Closed"
 $RPCOnline = $false
 }
+$RPCOnline
+#$Result
 
        try {
        (New-Object System.Net.Sockets.TCPClient -ArgumentList "$Computer",3389 -ErrorAction Stop | Out-Null)
@@ -301,7 +323,7 @@ $ExportPath
 
 if ($WriteReport -eq $true) {
 $Results | Export-Csv -NoTypeInformation -Path "$ReportsDir\$Reportname"       
-Write-Host "Report exported to $ReportsDir\$Reportname"
+Write-Host "Report exported to $ReportsDir\$Reportname" -BackgroundColor DarkGreen
 }
 else {
 $Results
