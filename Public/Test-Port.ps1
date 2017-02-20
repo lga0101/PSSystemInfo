@@ -1,49 +1,86 @@
-function Test-Port {
+﻿Function Test-Port {
 
+[cmdletbinding(   
+    DefaultParameterSetName = '',   
+    ConfirmImpact = 'low'   
+)]   
 
 Param(
+
+    [Parameter(   
+    Mandatory = $True,   
+    Position = 0,   
+    ParameterSetName = '',   
+    ValueFromPipeline = $True)]   
+    [array]$Computer,
     
-    [Parameter(Mandatory = $true)]
-    $Computer,
-
-    [Parameter()]
-    $TCPPort
-    )
-
-
-
-    [ScriptBlock]$tcptest = {
-    $tcpobject = New-Object System.Net.Sockets.TcpClient 
-    #Connect to remote machine's port               
-    try {
-    $connect = Invoke-Command $tcpobject.BeginConnect($computer,$tcpport,$null,$null) -ErrorAction Stop
-    #Configure a timeout before quitting - time in milliseconds 
-    $wait = $connect.AsyncWaitHandle.WaitOne(1000,$false) 
-        If (-Not $Wait) {
-            Return $false
-    } Else {
-    $error.clear()
-    $tcpobject.EndConnect($connect) | out-Null 
-    If ($Error[0]) {
-        #Write-warning ("{0}" -f $error[0].Exception.Message)
-    } 
-    Else {
-        Return $true
-        }
-        }
-        }
+    [Parameter(   
+    Position = 1,   
+    Mandatory = $True,   
+    ParameterSetName = '')]   
+    [string]$Port,
     
-    catch {
-    $RPCOnline = $false
-    Return $false
-    Write-host $_
-    }
-        
-    }
+    [Parameter(   
+    Mandatory = $False,   
+    ParameterSetName = '')]   
+    [int]$TCPtimeout=1000      
 
-    $computer = "VSMSKPAUTO1"
-    $TCPPort = "135"
+)
+$Report = @() 
 
-    Invoke-Command -ScriptBlock $tcptest -ArgumentList $Computer,$tcpport -ErrorAction Stop
+foreach ($pc in $computer) {
+                    $temp = "" | Select Server, Port, TypePort, Open, Notes   
+                    $tcpobject = new-Object system.Net.Sockets.TcpClient   
+                    #Connect to remote machine's port                 
+                    $connect = $tcpobject.BeginConnect($pc,$port,$null,$null)   
+                    #Configure a timeout before quitting   
+                    $wait = $connect.AsyncWaitHandle.WaitOne($TCPtimeout,$false)   
+                    #If timeout   
+                    If(!$wait) {   
+                        #Close connection   
+                        $tcpobject.Close()   
+                        Write-Verbose "Connection Timeout"   
+                        #Build report   
+                        $temp.Server = $pc   
+                        $temp.Port = $port   
+                        $temp.TypePort = "TCP"   
+                        $temp.Open = "False"   
+                        $temp.Notes = "Connection to Port Timed Out"   
+                    } Else {   
+                        $error.Clear()   
+                        $tcpobject.EndConnect($connect) | out-Null   
+                        #If error   
+                        If($error[0]){   
+                            #Begin making error more readable in report   
+                            [string]$string = ($error[0].exception).message   
+                            $message = (($string.split(":")[1]).replace('"',"")).TrimStart()   
+                            $failed = $true   
+                        }   
+                        #Close connection       
+                        $tcpobject.Close()  
+      #If unable to query port to due failure   
+                        If($failed){   
+                            #Build report   
+                            $temp.Server = $pc   
+                            $temp.Port = $port   
+                            $temp.TypePort = "TCP"   
+                            $temp.Open = "False"   
+                            $temp.Notes = "$message"   
+                        } Else{   
+                            #Build report   
+                            $temp.Server = $pc   
+                            $temp.Port = $port   
+                            $temp.TypePort = "TCP"   
+                            $temp.Open = "True"     
+                            $temp.Notes = ""   
+                        }   
+                    }      
 
+$failed = $Null
+#Merge temp array with report               
+$report += $temp                   
+}       
+                   
+
+$report
 }
