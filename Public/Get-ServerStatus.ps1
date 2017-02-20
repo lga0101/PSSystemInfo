@@ -147,11 +147,6 @@ ForEach ($Computer in $ComputerName) {
 
 
 
-
-$tcpport = '135'
-#$Computer = "VSMSKPAUTO1"
-$Computer = "badtest"
-
     #   Testing timout config 
     
 <#
@@ -192,12 +187,12 @@ $Result = New-Object System.Object
 #temp line
 #Invoke-Command -ScriptBlock $tcptest -ArgumentList $Computer,$tcpport -OutVariable $RPCOnline -ErrorAction Stop
 
-try {
-        (Invoke-Command -ScriptBlock $tcptest -ArgumentList $Computer,$tcpport -OutVariable $RPCOnline -ErrorAction Stop)
-        #$RPCOnline | Out-Null
-        #$RPCOnline = (Invoke-Command -ScriptBlock $tcptest -ArgumentList $Computer,$tcpport -ErrorAction Stop)
-        #(New-Object System.Net.Sockets.TCPClient -ArgumentList "$Computer",135 -ErrorAction Stop | Out-Null)
-        #$RPCOnline = $true             
+$RPCOnline = (Test-Port $Computer -Port 135 -ErrorAction Stop)
+Switch ($RPCOnline) {
+"False" {
+$Result | Add-Member -MemberType NoteProperty -Name "RPC" -Value "Error: Port Closed"
+}
+"True" {
         if ($Computer -eq "localhost" -or $RunAsUser -eq $True) {        
             try {
                 (Get-WmiObject win32_computersystem -ComputerName $Computer -ErrorAction Stop | Out-Null)
@@ -223,6 +218,17 @@ try {
                 }
                }
 }
+}
+
+        #(Invoke-Command -ScriptBlock $tcptest -ArgumentList $Computer,$tcpport -OutVariable $RPCOnline -ErrorAction Stop)
+        #$RPCOnline | Out-Null
+        #$RPCOnline = (Invoke-Command -ScriptBlock $tcptest -ArgumentList $Computer,$tcpport -ErrorAction Stop)
+        #(New-Object System.Net.Sockets.TCPClient -ArgumentList "$Computer",135 -ErrorAction Stop | Out-Null)
+        #$RPCOnline = $true   
+        
+        
+                  
+<#
 catch {
 #$Result | Add-Member -MemberType NoteProperty -Name "RPC" -Value "Error: $_"
 $Result | Add-Member -MemberType NoteProperty -Name "RPC" -Value "Error: Port Closed"
@@ -230,6 +236,7 @@ $RPCOnline = $false
 }
 $RPCOnline
 #$Result
+#>
 
        try {
        (New-Object System.Net.Sockets.TCPClient -ArgumentList "$Computer",3389 -ErrorAction Stop | Out-Null)

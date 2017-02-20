@@ -26,7 +26,7 @@ Param(
     [int]$TCPtimeout=1000      
 
 )
-$Report = @() 
+#$Report = @() 
 
 foreach ($pc in $computer) {
                     $temp = "" | Select Server, Port, TypePort, Open, Notes   
@@ -77,12 +77,13 @@ foreach ($pc in $computer) {
                     }      
 
 $failed = $Null
+Return $temp.open
 #Merge temp array with report               
-$report += $temp                   
+#$report += $temp                   
 }       
                    
 #Write-Host "Writing..." -BackgroundColor DarkGreen
 
-$report | ft *
+#$report | ft *
 
 }
