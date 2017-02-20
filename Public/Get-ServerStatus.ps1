@@ -66,21 +66,8 @@ if ($WriteReport -eq $true -and (!(Test-Path $ReportsDir)) ) {
     New-Item -Path $ReportsDir -ItemType Directory | Out-Null 
     }
 
-<#Temporarily dot source other functions until module is finished
-
-try {
-    . "G:\My Documents\GitHub\PSSystemInfo\Public\Get-Uptime.ps1"
-    . "G:\My Documents\GitHub\PSSystemInfo\Public\Get-PendingReboot.ps1"
-}
-catch {
-    Write-Host "Dot sourced module(s) not loaded.  Error: $_"
-}
-#>
-
 if ($PSCmdlet.ParameterSetName -eq 'ByComputerList') {
-
 $ComputerName = (Get-Content $ComputerList) 
-
 }
 
 $RunAsUser = $null
@@ -111,13 +98,11 @@ ForEach ($Computer in $ComputerName) {
     
     #Write the hostname to the array
 
-    $Result | Add-Member -MemberType NoteProperty -Name "Hostname" -Value $Computer
+    $Result | Add-Member -MemberType NoteProperty -Name "Hostname" -Value $Computer -Verbose
+
     #Write-Host "Starting $Computer test"
     if (Test-Connection -ComputerName $Computer -Quiet -Count 1) {
-        
-        
-        
-        $Result | Add-Member -MemberType NoteProperty -Name "Ping Result" -Value "OK"
+        $Result | Add-Member -MemberType NoteProperty -Name "Ping Result" -Value "Online"
         
 
         <# Commenting out the optional port code - will move to seperate function #
@@ -146,107 +131,52 @@ ForEach ($Computer in $ComputerName) {
     #>
 
 
-
-    #   Testing timout config 
-    
-<#
-    [ScriptBlock]$tcptest = {
-    $tcpobject = New-Object System.Net.Sockets.TcpClient 
-    #Connect to remote machine's port               
-    try {
-    $connect = Invoke-Command $tcpobject.BeginConnect($computer,$tcpport,$null,$null) -ErrorAction Stop
-    #Configure a timeout before quitting - time in milliseconds 
-    $wait = $connect.AsyncWaitHandle.WaitOne(1000,$false) 
-        If (-Not $Wait) {
-            Return $false
-    } Else {
-    $error.clear()
-    $tcpobject.EndConnect($connect) | out-Null 
-    If ($Error[0]) {
-        #Write-warning ("{0}" -f $error[0].Exception.Message)
-    } 
-    Else {
-        Return $true
+    $RPCOnline = (Test-Port $Computer -Port 135 -ErrorAction Stop)
+        Switch ($RPCOnline) {
+        "False" {
+            $Result | Add-Member -MemberType NoteProperty -Name "RPC" -Value "Error: Port Closed"
         }
-        }
-        }
-    
-    catch {
-    $RPCOnline = $false
-    Return $false
-    #Write-host $_
-    }
-    $tcpobject = $null
-}
-#>
-
-$result = $null
-$Result = New-Object System.Object
-
-
-#temp line
-#Invoke-Command -ScriptBlock $tcptest -ArgumentList $Computer,$tcpport -OutVariable $RPCOnline -ErrorAction Stop
-
-$RPCOnline = (Test-Port $Computer -Port 135 -ErrorAction Stop)
-Switch ($RPCOnline) {
-"False" {
-$Result | Add-Member -MemberType NoteProperty -Name "RPC" -Value "Error: Port Closed"
-}
-"True" {
-        if ($Computer -eq "localhost" -or $RunAsUser -eq $True) {        
-            try {
-                (Get-WmiObject win32_computersystem -ComputerName $Computer -ErrorAction Stop | Out-Null)
-                #Write-Host "RPC connection on computer $Computer successful." -ForegroundColor Green;
-                $Result | Add-Member -MemberType NoteProperty -Name "RPC" -Value "Online"
-                }
-            catch {
-                #Write-Host "RPC connection on computer $Computer failed: $_" -ForegroundColor Red
-                $Result | Add-Member -MemberType NoteProperty -Name "RPC" -Value "Error: $_"
-                }
+        "True" {
+                if ($Computer -eq "localhost" -or $RunAsUser -eq $True) {        
+                   try {
+                       (Get-WmiObject win32_computersystem -ComputerName $Computer -ErrorAction Stop | Out-Null)
+                       #Write-Host "RPC connection on computer $Computer successful." -ForegroundColor Green;
+                       $Result | Add-Member -MemberType NoteProperty -Name "RPC" -Value "Online"
+                       }
+                   catch {
+                       #Write-Host "RPC connection on computer $Computer failed: $_" -ForegroundColor Red
+                       $Result | Add-Member -MemberType NoteProperty -Name "RPC" -Value "Error: $_"
+                       }
+                   }
+               else {
+                   try {
+                       (Get-WmiObject win32_computersystem -ComputerName $Computer -Credential $Mycreds -ErrorAction Stop | Out-Null)
+                       #Write-Host "RPC connection on computer $Computer successful." -ForegroundColor Green;
+                       $Result | Add-Member -MemberType NoteProperty -Name "RPC" -Value "Online"
+                       #$Results += $Result       
+                       }
+                   catch {
+                       #Write-Host "RPC connection on computer $Computer failed: $_" -ForegroundColor Red
+                       $Result | Add-Member -MemberType NoteProperty -Name "RPC" -Value "Error: $_"
+                       #$Results += $Result       
+                       }
+                      }
             }
-        else {
-            try {
-                (Get-WmiObject win32_computersystem -ComputerName $Computer -Credential $Mycreds -ErrorAction Stop | Out-Null)
-                #Write-Host "RPC connection on computer $Computer successful." -ForegroundColor Green;
-                $Result | Add-Member -MemberType NoteProperty -Name "RPC" -Value "Online"
-                #$Results += $Result       
-                }
-            catch {
-                #Write-Host "RPC connection on computer $Computer failed: $_" -ForegroundColor Red
-                $Result | Add-Member -MemberType NoteProperty -Name "RPC" -Value "Error: $_"
-                #$Results += $Result       
-                }
-               }
-}
-}
-
-        #(Invoke-Command -ScriptBlock $tcptest -ArgumentList $Computer,$tcpport -OutVariable $RPCOnline -ErrorAction Stop)
-        #$RPCOnline | Out-Null
-        #$RPCOnline = (Invoke-Command -ScriptBlock $tcptest -ArgumentList $Computer,$tcpport -ErrorAction Stop)
-        #(New-Object System.Net.Sockets.TCPClient -ArgumentList "$Computer",135 -ErrorAction Stop | Out-Null)
-        #$RPCOnline = $true   
-        
-        
-                  
-<#
-catch {
-#$Result | Add-Member -MemberType NoteProperty -Name "RPC" -Value "Error: $_"
-$Result | Add-Member -MemberType NoteProperty -Name "RPC" -Value "Error: Port Closed"
-$RPCOnline = $false
-}
-$RPCOnline
-#$Result
-#>
+        }
 
        try {
-       (New-Object System.Net.Sockets.TCPClient -ArgumentList "$Computer",3389 -ErrorAction Stop | Out-Null)
-       #Write-Host "RDP is responsive on $Computer" -ForegroundColor Green
-       $Result | Add-Member -MemberType NoteProperty -Name "RDP" -Value "Up"
-       #$Results += $Result       
+       $RDPOnline = (Test-Port $Computer -Port 3389 -ErrorAction Stop)
+       Switch ($RDPOnline) {
+       "False" {
+            $Result | Add-Member -MemberType NoteProperty -Name "RDP" -Value "Down"
+            }
+       "True" {
+            $Result | Add-Member -MemberType NoteProperty -Name "RDP" -Value "Up"
+       }
+       }
        }
        catch {
-       #Write-Host "RDP is down on $Computer" -ForegroundColor Red
-       $Result | Add-Member -MemberType NoteProperty -Name "RDP" -Value "Down"
+       Write-Host $_
        }
 
 
@@ -280,6 +210,9 @@ else {
        $PendingReboot = $null 
 
 
+
+
+
 if ($Mycreds -eq $null) {       
        try {
        (Get-PendingReboot -ComputerName $Computer -ErrorAction Stop | Out-Null)
@@ -292,25 +225,25 @@ if ($Mycreds -eq $null) {
 
 else {       
        try {
-       (Get-PendingReboot -ComputerName $Computer -Credential $mycreds -ErrorAction Stop | Out-Null)
+       $WSManOnline = (Test-Port $Computer -Port 5985 -ErrorAction Stop)
+       Switch ($WSManOnline) {
+       "False" {
+       $Result | Add-Member -MemberType NoteProperty -Name "Reboot Required" -Value 'False'
+       }
+       "True" {
        $PendingReboot = (Get-PendingReboot -ComputerName $Computer -Credential $mycreds -ErrorAction Stop)
+       $Result | Add-Member -MemberType NoteProperty -Name "Reboot Required" -Value 'True'
+       }
+       Default {
+       $Result | Add-Member -MemberType NoteProperty -Name "Reboot Required" -Value 'Unkown'
+       }
+       }
        }
        catch {
        $Result | Add-Member -MemberType NoteProperty -Name "Reboot Required" -Value $_
        }
     }
-       
-       if ($PendingReboot -eq "True") {
-       $Result | Add-Member -MemberType NoteProperty -Name "Reboot Required" -Value 'True'
-       }
-       elseif ($PendingReboot -eq "False") {
-       $Result | Add-Member -MemberType NoteProperty -Name "Reboot Required" -Value 'False'
-       }
-       else {
-       $Result | Add-Member -MemberType NoteProperty -Name "Reboot Required" -Value $PendingReboot
-       }
-  
-}
+  }
     else {
             # Computer doesn't even respond to ping..."
             $Result | Add-Member -MemberType NoteProperty -Name "Ping Result" -Value "Failed"
@@ -335,5 +268,4 @@ Write-Host "Report exported to $ReportsDir\$Reportname" -BackgroundColor DarkGre
 else {
 $Results
 }
-
 }
