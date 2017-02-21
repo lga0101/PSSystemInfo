@@ -32,14 +32,9 @@ Param(
     [array]
     $ComputerName,
 
-    <#
-    [Parameter(Mandatory=$true, HelpMessage="You must provide a hostname or an IP address to test")]
-    #[array[]]$ComputerName,
-    [string[]]$ComputerName,
-    #>
-
     [Parameter()]
-    [string[]]$User,
+    [string[]]
+    $User,
 
     [Parameter()]
     $Pass,
@@ -49,7 +44,8 @@ Param(
     $ExportPath,
 
     [Parameter()]
-    [int32]$OptionalPort 
+    [int32]
+    $OptionalPort 
     
     )
 
@@ -80,10 +76,10 @@ $Pass = Read-Host "Enter Password" -AsSecureString
 $Mycreds = New-Object System.Management.Automation.PSCredential ($User, $Pass)
 }
 
-#Create an empty array for our end results
+# Create an empty array for our end results #
 $Results = @()
 
-#Set the report filename
+# Set the report filename #
 $time = (Get-Date -UFormat %H.%M.%S)
 $Reportname = "ServerStatusReport_" + (Get-Date -Format MM.dd.yyyy) + "_$time.csv"
 
@@ -91,16 +87,20 @@ $Reportname = "ServerStatusReport_" + (Get-Date -Format MM.dd.yyyy) + "_$time.cs
 # Begin for loop on the computer array
 
 ForEach ($Computer in $ComputerName) {
-    
-    #Create an object to hold each machine's results
 
+    # Testing progress bar
+    $i++
+    $progress = [math]::truncate(($i / $computername.length)  * 100) 
+    Write-Progress -activity "Checking $computer" -status "$Progress percent complete: " -PercentComplete (($i / $computername.length)  * 100)
+
+    
+    # Create an object to hold each machine's results #
     $Result = New-Object System.Object    
     
-    #Write the hostname to the array
-
+    # Write the hostname to the array #
     $Result | Add-Member -MemberType NoteProperty -Name "Hostname" -Value $Computer -Verbose
 
-    #Write-Host "Starting $Computer test"
+    # Starting main if/else statement: pass/fail ping test #
     if (Test-Connection -ComputerName $Computer -Quiet -Count 1) {
         $Result | Add-Member -MemberType NoteProperty -Name "Ping Result" -Value "Online"
         
@@ -209,34 +209,14 @@ else {
        
        $PendingReboot = $null 
 
-try {
-    $WSManOnline = (Test-Port $Computer -Port 5985 -ErrorAction Stop)
-}
-catch {
-    $Result | Add-Member -MemberType NoteProperty -Name "Reboot Required"  -Value 'Unknown'
-}
 
 
-switch ($WSManOnline) {
-    "False" { 
-        $Result | Add-Member -MemberType NoteProperty -Name "Reboot Required" -Value 'Unkown'
-     }
-    Default {
-        
-    }
-}
-if ($Mycreds -eq $null) {
-    $command = (Get-PendingReboot -ComputerName $Computer -ErrorAction Stop | Out-Null)
-}
-else {
-    $command = (Get-PendingReboot -ComputerName $Computer -Credential $mycreds -ErrorAction Stop)
-}
+
 
 if ($Mycreds -eq $null) {       
        try {
        (Get-PendingReboot -ComputerName $Computer -ErrorAction Stop | Out-Null)
        $PendingReboot = (Get-PendingReboot -ComputerName $Computer -ErrorAction Stop)
-       $Result | Add-Member -MemberType NoteProperty -Name "Reboot Required" -Value $PendingReboot
        }
        catch {
        $Result | Add-Member -MemberType NoteProperty -Name "Reboot Required" -Value $_
