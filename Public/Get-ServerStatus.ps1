@@ -84,11 +84,11 @@ $time = (Get-Date -UFormat %H.%M.%S)
 $Reportname = "ServerStatusReport_" + (Get-Date -Format MM.dd.yyyy) + "_$time.csv"
 
 
-# Begin for loop on the computer array
+# Begin main for loop on the computer array
 
 ForEach ($Computer in $ComputerName) {
 
-    # Testing progress bar
+    # Start progress bar
     $i++
     $progress = [math]::truncate(($i / $computername.length)  * 100) 
     Write-Progress -activity "Checking $computer" -status "$Progress percent complete: " -PercentComplete (($i / $computername.length)  * 100)
@@ -134,14 +134,14 @@ ForEach ($Computer in $ComputerName) {
     $RPCOnline = (Test-Port $Computer -Port 135 -ErrorAction Stop)
         Switch ($RPCOnline) {
         "False" {
-            $Result | Add-Member -MemberType NoteProperty -Name "RPC" -Value "Error: Port Closed"
+            $Result | Add-Member -MemberType NoteProperty -Name "RPC" -Value "Down"
         }
         "True" {
                 if ($Computer -eq "localhost" -or $RunAsUser -eq $True) {        
                    try {
                        (Get-WmiObject win32_computersystem -ComputerName $Computer -ErrorAction Stop | Out-Null)
                        #Write-Host "RPC connection on computer $Computer successful." -ForegroundColor Green;
-                       $Result | Add-Member -MemberType NoteProperty -Name "RPC" -Value "Online"
+                       $Result | Add-Member -MemberType NoteProperty -Name "RPC" -Value "Up"
                        }
                    catch {
                        #Write-Host "RPC connection on computer $Computer failed: $_" -ForegroundColor Red
@@ -223,12 +223,15 @@ if ($Mycreds -eq $null) {
        }
     }
 
+
+### need to fix logic below for wsman test followed by reboot check ###
+
 else {       
        try {
        $WSManOnline = (Test-Port $Computer -Port 5985 -ErrorAction Stop)
        Switch ($WSManOnline) {
        "False" {
-       $Result | Add-Member -MemberType NoteProperty -Name "Reboot Required" -Value 'False'
+       $Result | Add-Member -MemberType NoteProperty -Name "Reboot Required" -Value 'Unknown'
        }
        "True" {
        $PendingReboot = (Get-PendingReboot -ComputerName $Computer -Credential $mycreds -ErrorAction Stop)
@@ -247,7 +250,7 @@ else {
     else {
             # Computer doesn't even respond to ping..."
             $Result | Add-Member -MemberType NoteProperty -Name "Ping Result" -Value "Failed"
-            }
+          }
 
 # Write this machine's results to the array    
  
@@ -258,8 +261,6 @@ $Results += $Result
 # End for loop on the computer array
 
 # Export the array to the CSV report
-
-$ExportPath
 
 if ($WriteReport -eq $true) {
 $Results | Export-Csv -NoTypeInformation -Path "$ReportsDir\$Reportname"       
