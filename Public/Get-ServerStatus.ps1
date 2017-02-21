@@ -210,9 +210,6 @@ else {
        $PendingReboot = $null 
 
 
-
-
-
 if ($Mycreds -eq $null) {       
        try {
        (Get-PendingReboot -ComputerName $Computer -ErrorAction Stop | Out-Null)
@@ -225,6 +222,7 @@ if ($Mycreds -eq $null) {
 
 
 ### need to fix logic below for wsman test followed by reboot check ###
+
 
 else {       
        try {
