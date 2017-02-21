@@ -1,6 +1,6 @@
 ﻿<#
 .SYNOPSIS
-    Get-ServerStatus.ps1 - Test an RPC and RDP connection against one or more computers
+    Get-ServerStatus.ps1 - Test network, RPC, and RDP connections, as well as gathering uptime and pending reboot status against one or more computers.
 .DESCRIPTION
     Get-ServerStatus.ps1 - Test an RPC connection (WMI request) against one or more computer(s)
     with test-connection before to see if the computer is reachable or not first
