@@ -209,14 +209,34 @@ else {
        
        $PendingReboot = $null 
 
+try {
+    $WSManOnline = (Test-Port $Computer -Port 5985 -ErrorAction Stop)
+}
+catch {
+    $Result | Add-Member -MemberType NoteProperty -Name "Reboot Required"  -Value 'Unknown'
+}
 
 
-
+switch ($WSManOnline) {
+    "False" { 
+        $Result | Add-Member -MemberType NoteProperty -Name "Reboot Required" -Value 'Unkown'
+     }
+    Default {
+        
+    }
+}
+if ($Mycreds -eq $null) {
+    $command = (Get-PendingReboot -ComputerName $Computer -ErrorAction Stop | Out-Null)
+}
+else {
+    $command = (Get-PendingReboot -ComputerName $Computer -Credential $mycreds -ErrorAction Stop)
+}
 
 if ($Mycreds -eq $null) {       
        try {
        (Get-PendingReboot -ComputerName $Computer -ErrorAction Stop | Out-Null)
        $PendingReboot = (Get-PendingReboot -ComputerName $Computer -ErrorAction Stop)
+       $Result | Add-Member -MemberType NoteProperty -Name "Reboot Required" -Value $PendingReboot
        }
        catch {
        $Result | Add-Member -MemberType NoteProperty -Name "Reboot Required" -Value $_
