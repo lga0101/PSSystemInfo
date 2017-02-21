@@ -21,7 +21,8 @@
        }
        $LastBootUpTime = $Uptime.ConvertToDateTime($Uptime.LastBootUpTime)
        $Time = (Get-Date) - $LastBootUpTime
-       Return '{0:00} Days, {1:00} Hours, {2:00} Minutes, {3:00} Seconds' -f $Time.Days, $Time.Hours, $Time.Minutes, $Time.Seconds
+       #Return '{0:00} Days, {1:00} Hours, {2:00} Minutes, {3:00} Seconds' -f $Time.Days, $Time.Hours, $Time.Minutes, $Time.Seconds
+       Return '{0:00}:{1:00}:{2:00}' -f $Time.Days, $Time.Hours, $Time.Minutes
        }
        catch {
        Return $_

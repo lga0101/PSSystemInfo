@@ -30,7 +30,7 @@ Param(
 
 foreach ($pc in $computer) {
                     $temp = "" | Select Server, Port, TypePort, Open, Notes   
-                    $tcpobject = new-Object system.Net.Sockets.TcpClient   
+                    $tcpobject = New-Object System.Net.Sockets.TcpClient   
                     #Connect to remote machine's port                 
                     $connect = $tcpobject.BeginConnect($pc,$port,$null,$null)   
                     #Configure a timeout before quitting   

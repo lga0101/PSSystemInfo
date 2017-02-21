@@ -183,26 +183,26 @@ ForEach ($Computer in $ComputerName) {
 if ($RPCOnline -eq $true -and $RunAsUser -eq $True) {
        try {
        $uptime = (Get-Uptime -ComputerName $Computer)
-       $Result | Add-Member -MemberType NoteProperty -Name "System Uptime" -Value $uptime
+       $Result | Add-Member -MemberType NoteProperty -Name "Uptime (DD:HH:MM)" -Value $uptime
        }
        
        catch {
-       $Result | Add-Member -MemberType NoteProperty -Name "System Uptime" -Value $_
+       $Result | Add-Member -MemberType NoteProperty -Name "Uptime (DD:HH:MM)" -Value $_
        }
     }
 elseif ($RPCOnline -eq $true) {
        
        try {
        $uptime = (Get-Uptime -ComputerName $Computer -Credential $Mycreds )
-       $Result | Add-Member -MemberType NoteProperty -Name "System Uptime" -Value $uptime
+       $Result | Add-Member -MemberType NoteProperty -Name "Uptime (DD:HH:MM)" -Value $uptime
        }
        
        catch {
-       $Result | Add-Member -MemberType NoteProperty -Name "System Uptime" -Value $_
+       $Result | Add-Member -MemberType NoteProperty -Name "Uptime (DD:HH:MM)" -Value $_
        }
 }
 else {
-       $Result | Add-Member -MemberType NoteProperty -Name "System Uptime" -Value "Unknown"
+       $Result | Add-Member -MemberType NoteProperty -Name "Uptime (DD:HH:MM)" -Value "Unknown"
 }
        
        #Clear pending reboot to avoid false positives
