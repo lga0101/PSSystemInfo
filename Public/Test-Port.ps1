@@ -48,7 +48,7 @@ foreach ($pc in $computer) {
                         $temp.Notes = "Connection to Port Timed Out"   
                     } Else {   
                         $error.Clear()   
-                        $tcpobject.EndConnect($connect) | out-Null   
+                        $tcpobject.EndConnect($connect) | out-Null -ErrorAction SilentlyContinue
                         #If error   
                         If($error[0]){   
                             #Begin making error more readable in report   

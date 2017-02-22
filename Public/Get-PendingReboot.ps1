@@ -1,19 +1,69 @@
 Function Get-PendingReboot
 { 
 
+<#
+
+.SYNOPSIS
+    Gets the pending reboot status on a local computer. Return 
+
+.DESCRIPTION
+    Queries the registry and WMI to determine if the system waiting for a reboot, from:
+        CBServicing   = Component Based Servicing (Windows 2008)
+        WindowsUpdate = Windows Update / Auto Update (Windows 2003 / 2008)
+        CCMClientSDK  = SCCM 2012 Clients only (DetermineIfRebootPending method) otherwise $null value
+        PendFileRename = PendingFileRenameOperations (Windows 2003 / 2008)
+
+    Returns hash table similar to this:
+
+    Computer       : MYCOMPUTERNAME
+    LastBootUpTime : 01/12/2014 11:53:04 AM
+    CBServicing    : False
+    WindowsUpdate  : False
+    CCMClientSDK   : False
+    PendFileRename : False
+    PendFileRenVal : 
+    RebootPending  : False
+    ErrorMsg       : 
+
+    NOTES: 
+    ErrorMsg only contains something if an error occured
+
+.EXAMPLE
+    Get-PendingReboot
+
+.EXAMPLE
+    $PRB=Get-PendingReboot
+    $PRB.RebootPending
+
+.NOTES
+    Based On: http://gallery.technet.microsoft.com/scriptcenter/Get-PendingReboot-Query-bdb79542
+#>
  
 [CmdletBinding()] 
-param( 
+
+param
+( 
+
   [Parameter(Position=0,ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)] 
-  [Alias("CN","Computer")] 
-  [String[]]$ComputerName="$env:COMPUTERNAME", 
-  [String]$ErrorLog 
+  [String[]]
+  $ComputerName="$env:COMPUTERNAME", 
+
+  [String]
+  $ErrorLog,
+
+  [Parameter()]
+  [ValidateNotNull()]
+  [System.Management.Automation.PSCredential]
+  [System.Management.Automation.Credential()]
+  $Credential = [System.Management.Automation.PSCredential]::Empty
+
   ) 
  
 Begin {  }## End Begin Script Block 
 Process { 
   Foreach ($Computer in $ComputerName) { 
-  Try { 
+  
+Try { 
       ## Setting pending values to false to cut down on the number of else statements 
       $CompPendRen,$PendFileRename,$Pending,$SCCM = $false,$false,$false,$false 
        
@@ -21,7 +71,7 @@ Process {
       $CBSRebootPend = $null 
              
       ## Querying WMI for build version 
-      $WMI_OS = Get-WmiObject -Class Win32_OperatingSystem -Property BuildNumber, CSName -ComputerName $Computer -ErrorAction Stop 
+      $WMI_OS = Get-WmiObject -Class Win32_OperatingSystem -Property BuildNumber, CSName -ComputerName $Computer -Credential $Credential -ErrorAction Stop 
  
       ## Making registry connection to the local/remote computer 
       $HKLM = [UInt32] "0x80000002" 
@@ -57,12 +107,12 @@ Process {
       ## To avoid nested 'if' statements and unneeded WMI calls to determine if the CCM_ClientUtilities class exist, setting EA = 0 
       $CCMClientSDK = $null 
       $CCMSplat = @{ 
-    NameSpace='ROOT\ccm\ClientSDK' 
-    Class='CCM_ClientUtilities' 
-    Name='DetermineIfRebootPending' 
-    ComputerName=$Computer 
-    ErrorAction='Stop' 
-      } 
+        NameSpace='ROOT\ccm\ClientSDK' 
+        Class='CCM_ClientUtilities' 
+        Name='DetermineIfRebootPending' 
+        ComputerName=$Computer 
+        ErrorAction='Stop' 
+        } 
       ## Try CCMClientSDK 
       Try { 
     $CCMClientSDK = Invoke-WmiMethod @CCMSplat 
@@ -101,7 +151,8 @@ Process {
         'PendFileRenVal', 
         'RebootPending' 
     )} 
-      New-Object -TypeName PSObject -Property @{ 
+
+      $results = New-Object -TypeName PSObject -Property @{ 
     Computer=$WMI_OS.CSName 
     CBServicing=$CBSRebootPend 
     WindowsUpdate=$WUAURebootReq 
@@ -110,11 +161,21 @@ Process {
     PendFileRename=$PendFileRename 
     PendFileRenVal=$RegValuePFRO 
     RebootPending=($CompPendRen -or $CBSRebootPend -or $WUAURebootReq -or $SCCM -or $PendFileRename) 
-      } 
-      
-      #| Select-Object @SelectSplat 
- 
-  } Catch { 
+      } | Select-Object @SelectSplat 
+
+
+    If ($results.rebootpending -eq $true) {
+    Return "Reboot Pending"
+    }
+    elseif ($results.rebootpending -eq $false) {
+    Return ""
+    }
+    else {
+    Return "Unknown"
+    }
+}
+  
+Catch { 
       Write-Warning "$Computer`: $_" 
       ## If $ErrorLog, log the file to a user specified location/path 
       If ($ErrorLog) { 

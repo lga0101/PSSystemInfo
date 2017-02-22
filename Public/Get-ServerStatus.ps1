@@ -32,12 +32,20 @@ Param(
     [array]
     $ComputerName,
 
+<#
     [Parameter()]
     [string[]]
     $User,
 
     [Parameter()]
     $Pass,
+#>
+
+    [Parameter()]
+    [ValidateNotNull()]
+    [System.Management.Automation.PSCredential]
+    [System.Management.Automation.Credential()]
+    $Credential = [System.Management.Automation.PSCredential]::Empty,
 
     [Parameter()]
     [string[]]
@@ -48,6 +56,8 @@ Param(
     $OptionalPort 
     
     )
+
+$Mycreds = $Credential
 
 if ($ExportPath -eq $null) {
 $ReportsDir = $ExportPath
@@ -66,6 +76,9 @@ if ($PSCmdlet.ParameterSetName -eq 'ByComputerList') {
 $ComputerName = (Get-Content $ComputerList) 
 }
 
+
+<# REWORKING AUTHENTICATION, COMMENTING OUT
+
 $RunAsUser = $null
 
 if ($User -eq $null -and $Pass -eq $null) { 
@@ -75,6 +88,7 @@ if ($User -ne $null -and $Pass -eq $null) {
 $Pass = Read-Host "Enter Password" -AsSecureString
 $Mycreds = New-Object System.Management.Automation.PSCredential ($User, $Pass)
 }
+#>
 
 # Create an empty array for our end results #
 $Results = @()
@@ -137,8 +151,8 @@ ForEach ($Computer in $ComputerName) {
             $Result | Add-Member -MemberType NoteProperty -Name "RPC" -Value "Down"
         }
         "True" {
-                if ($Computer -eq "localhost" -or $RunAsUser -eq $True) {        
-                   try {
+#COMMENT OUT - TESTING CREDENTIALS                if ($Computer -eq "localhost" -or $RunAsUser -eq $True) {        
+               <#    try {
                        (Get-WmiObject win32_computersystem -ComputerName $Computer -ErrorAction Stop | Out-Null)
                        #Write-Host "RPC connection on computer $Computer successful." -ForegroundColor Green;
                        $Result | Add-Member -MemberType NoteProperty -Name "RPC" -Value "Up"
@@ -147,8 +161,8 @@ ForEach ($Computer in $ComputerName) {
                        #Write-Host "RPC connection on computer $Computer failed: $_" -ForegroundColor Red
                        $Result | Add-Member -MemberType NoteProperty -Name "RPC" -Value "Error: $_"
                        }
-                   }
-               else {
+                   } 
+               else { #>
                    try {
                        (Get-WmiObject win32_computersystem -ComputerName $Computer -Credential $Mycreds -ErrorAction Stop | Out-Null)
                        #Write-Host "RPC connection on computer $Computer successful." -ForegroundColor Green;
@@ -162,7 +176,7 @@ ForEach ($Computer in $ComputerName) {
                        }
                       }
             }
-        }
+#COMMENT OUT - TESTING CREDENTIALS        }
 
        try {
        $RDPOnline = (Test-Port $Computer -Port 3389 -ErrorAction Stop)
@@ -172,24 +186,24 @@ ForEach ($Computer in $ComputerName) {
             }
        "True" {
             $Result | Add-Member -MemberType NoteProperty -Name "RDP" -Value "Up"
-       }
-       }
-       }
+            }
+          }
+        }
        catch {
        Write-Host $_
        }
 
 
-if ($RPCOnline -eq $true -and $RunAsUser -eq $True) {
+if ($RPCOnline -eq $true <#-and $RunAsUser -eq $True#>) {
        try {
-       $uptime = (Get-Uptime -ComputerName $Computer)
+       $uptime = (Get-Uptime -ComputerName $Computer -Credential $Credential)
        $Result | Add-Member -MemberType NoteProperty -Name "Uptime (DD:HH:MM)" -Value $uptime
        }
-       
        catch {
        $Result | Add-Member -MemberType NoteProperty -Name "Uptime (DD:HH:MM)" -Value $_
        }
     }
+<#
 elseif ($RPCOnline -eq $true) {
        
        try {
@@ -201,6 +215,8 @@ elseif ($RPCOnline -eq $true) {
        $Result | Add-Member -MemberType NoteProperty -Name "Uptime (DD:HH:MM)" -Value $_
        }
 }
+#>
+
 else {
        $Result | Add-Member -MemberType NoteProperty -Name "Uptime (DD:HH:MM)" -Value "Unknown"
 }
@@ -210,7 +226,7 @@ else {
        $PendingReboot = $null 
 
 
-if ($Mycreds -eq $null) {       
+    if ($Mycreds -eq $null) {       
        try {
        (Get-PendingReboot -ComputerName $Computer -ErrorAction Stop | Out-Null)
        $PendingReboot = (Get-PendingReboot -ComputerName $Computer -ErrorAction Stop)
@@ -248,7 +264,7 @@ else {
     else {
             # Computer doesn't even respond to ping..."
             $Result | Add-Member -MemberType NoteProperty -Name "Ping Result" -Value "Failed"
-          }
+        }
 
 # Write this machine's results to the array    
  
