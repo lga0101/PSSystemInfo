@@ -173,6 +173,9 @@ ForEach ($Computer in $ComputerName) {
                     $Result | Add-Member -MemberType NoteProperty -Name "Uptime (DD:HH:MM)" -Value "Unknown"
                    }
 
+#  Pending Reboot Try/Catch - clear pending reboot to avoid false positives
+
+$PendingReboot = $null
 
                     try {
                         $PendingReboot = (Get-PendingReboot -ComputerName $Computer -Credential $mycreds -ErrorAction Stop)
