@@ -182,7 +182,7 @@ $PendingReboot = $null
                         $Result | Add-Member -MemberType NoteProperty -Name "Pending Reboot" -Value $pendingreboot
                     }
                     catch {
-                        $_
+                        $Result | Add-Member -MemberType NoteProperty -Name "Pending Reboot" -Value $_
                     }
             }
 
