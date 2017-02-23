@@ -52,10 +52,7 @@ param
   $ErrorLog,
 
   [Parameter()]
-  [ValidateNotNull()]
-  [System.Management.Automation.PSCredential]
-  [System.Management.Automation.Credential()]
-  $Credential = [System.Management.Automation.PSCredential]::Empty
+  $Credential
 
   ) 
  
@@ -176,7 +173,8 @@ Try {
 }
   
 Catch { 
-      Write-Warning "$Computer`: $_" 
+      #Write-Warning "$Computer`: $_"
+      Return "Unknown" 
       ## If $ErrorLog, log the file to a user specified location/path 
       If ($ErrorLog) { 
     Out-File -InputObject "$Computer`,$_" -FilePath $ErrorLog -Append 

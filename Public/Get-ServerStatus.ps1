@@ -4,19 +4,27 @@
 .DESCRIPTION
     Get-ServerStatus.ps1 - Test an RPC connection (WMI request) against one or more computer(s)
     with test-connection before to see if the computer is reachable or not first
+.PARAMETER ComputerList
+    Defines the path to the file containing a list of servers to test against, either by hostname or IP address.
 .PARAMETER ComputerName
-    Defines the computer name or IP address to test the RPC connection. Could be an array of servernames
-    Mandatory parameter.
+    Defines the computer name or IP address to test against. Could be an array of server names.
+.PARAMETER User
+    User
+.PARAMETER Pass
+    Pass
 .NOTES
     File Name    : Get-ServerStatus.ps1
     Author       : Marcus Daniels - danielm1@mskcc.org
     Adapted From : RPC-Ping.ps1 by Fabrice ZERROUKI - fabricezerrouki@hotmail.com
 .EXAMPLE
-    PS D:\> .\Get-ServerStatus.ps1 -ComputerName SERVER1
-    Test connections against SERVER1
+    PS D:\> Get-ServerStatus.ps1 -ComputerList C:\servers.txt -ExportPath G:\Reports
+    Get server status from a list of servers and export to a CSV at the defined path. 
 .EXAMPLE
-    PS D:\> .\Get-ServerStatus.ps1 -ComputerName SERVER1,192.168.0.23
-    Test connections against SERVER1 and 192.168.0.23
+    PS D:\> Get-ServerStatus.ps1 -ComputerName SERVER1
+    Get server status for SERVER1 as current user
+.EXAMPLE
+    PS D:\> Get-ServerStatus.ps1 -ComputerName SERVER1,192.168.0.23 -Credential JSMith
+    Get server status for SERVER1 and 192.168.0.23 as a supplied user.  Can also pass "-Credential (Get-Credential)" for a Windows security prompt. 
 #>
 
 function Get-ServerStatus {
@@ -32,21 +40,21 @@ Param(
     [array]
     $ComputerName,
 
-<#
+
     [Parameter()]
     [string[]]
     $User,
 
     [Parameter()]
     $Pass,
-#>
 
+<#
     [Parameter()]
     [ValidateNotNull()]
     [System.Management.Automation.PSCredential]
     [System.Management.Automation.Credential()]
     $Credential = [System.Management.Automation.PSCredential]::Empty,
-
+#>
     [Parameter()]
     [string[]]
     $ExportPath,
@@ -56,8 +64,6 @@ Param(
     $OptionalPort 
     
     )
-
-$Mycreds = $Credential
 
 if ($ExportPath -eq $null) {
 $ReportsDir = $ExportPath
@@ -76,19 +82,26 @@ if ($PSCmdlet.ParameterSetName -eq 'ByComputerList') {
 $ComputerName = (Get-Content $ComputerList) 
 }
 
-
-<# REWORKING AUTHENTICATION, COMMENTING OUT
+# Reset the user just in case
 
 $RunAsUser = $null
 
+# Authentication logic
+
 if ($User -eq $null -and $Pass -eq $null) { 
 $RunAsUser = $True
+#$mycreds = $null
 }
-if ($User -ne $null -and $Pass -eq $null) {
+
+elseif ($User -ne $null -and $Pass -eq $null) {
 $Pass = Read-Host "Enter Password" -AsSecureString
 $Mycreds = New-Object System.Management.Automation.PSCredential ($User, $Pass)
 }
-#>
+
+elseif ($User -and $Pass) {
+$Pass = ConvertTo-SecureString -String $Pass -AsPlainText -Force
+$Mycreds = New-Object System.Management.Automation.PSCredential ($User, $Pass)
+}
 
 # Create an empty array for our end results #
 $Results = @()
@@ -96,7 +109,6 @@ $Results = @()
 # Set the report filename #
 $time = (Get-Date -UFormat %H.%M.%S)
 $Reportname = "ServerStatusReport_" + (Get-Date -Format MM.dd.yyyy) + "_$time.csv"
-
 
 # Begin main for loop on the computer array
 
@@ -106,7 +118,6 @@ ForEach ($Computer in $ComputerName) {
     $i++
     $progress = [math]::truncate(($i / $computername.length)  * 100) 
     Write-Progress -activity "Checking $computer" -status "$Progress percent complete: " -PercentComplete (($i / $computername.length)  * 100)
-
     
     # Create an object to hold each machine's results #
     $Result = New-Object System.Object    
@@ -117,150 +128,67 @@ ForEach ($Computer in $ComputerName) {
     # Starting main if/else statement: pass/fail ping test #
     if (Test-Connection -ComputerName $Computer -Quiet -Count 1) {
         $Result | Add-Member -MemberType NoteProperty -Name "Ping Result" -Value "Online"
-        
+    #   RDP Try/Catch
+                
+    try {
+    $RDPOnline = (Test-Port $Computer -Port 3389 -ErrorAction Stop)
+    Switch ($RDPOnline) {
+    "False" {
+         $Result | Add-Member -MemberType NoteProperty -Name "RDP" -Value "Down"
+         }
+    "True" {
+         $Result | Add-Member -MemberType NoteProperty -Name "RDP" -Value "Up"
+         }
+       }
+     }
+    catch {
+    $Result | Add-Member -MemberType NoteProperty -Name "RDP" -Value "Unknown"
+     }        
 
-        <# Commenting out the optional port code - will move to seperate function #
-        if (!($OptionalPort)) {
-            }
-        elseif ($OptionalPort -eq '80') {
-            #Write-Host "Starting port $OptionalPort test on $Computer"
-            try {
-            #Write-Host "$Computer debug"
-            $status = Invoke-WebRequest $Computer
-            #Write-Host "$Computer debug"
-            $StatusCode = $status.StatusCode
-            $StatusDesc = $status.StatusDescription
-            #Write-Host "Port $OptionalPort on $Computer : $StatusCode $StatusDesc" -ForegroundColor Green
-            }
-            catch {
-            #Write-Host "Port $OptionalPort on $Computer is unresponsive"  -ForegroundColor Red
-            }
-        $Result | Add-Member -MemberType NoteProperty -Name "Optional Port" -Value $OptionalPort
-        $Result | Add-Member -MemberType NoteProperty -Name "Status Code" -Value $StatusCode
-        $Result | Add-Member -MemberType NoteProperty -Name "Status Desc" -Value $StatusDesc
-        }
-        else {
-        #Write-Host "Warning: No current checks for port $OptionalPort" -ForegroundColor Yellow
-    }
-    #>
+  #   First an RPC port test
 
+  $RPCOnline = (Test-Port $Computer -Port 135 -ErrorAction Stop)
 
-    $RPCOnline = (Test-Port $Computer -Port 135 -ErrorAction Stop)
-        Switch ($RPCOnline) {
+    Switch ($RPCOnline) {
         "False" {
             $Result | Add-Member -MemberType NoteProperty -Name "RPC" -Value "Down"
         }
         "True" {
-#COMMENT OUT - TESTING CREDENTIALS                if ($Computer -eq "localhost" -or $RunAsUser -eq $True) {        
-               <#    try {
-                       (Get-WmiObject win32_computersystem -ComputerName $Computer -ErrorAction Stop | Out-Null)
-                       #Write-Host "RPC connection on computer $Computer successful." -ForegroundColor Green;
-                       $Result | Add-Member -MemberType NoteProperty -Name "RPC" -Value "Up"
-                       }
-                   catch {
-                       #Write-Host "RPC connection on computer $Computer failed: $_" -ForegroundColor Red
-                       $Result | Add-Member -MemberType NoteProperty -Name "RPC" -Value "Error: $_"
-                       }
-                   } 
-               else { #>
+        #   RPC Try/Catch via WMI call
+        
                    try {
                        (Get-WmiObject win32_computersystem -ComputerName $Computer -Credential $Mycreds -ErrorAction Stop | Out-Null)
-                       #Write-Host "RPC connection on computer $Computer successful." -ForegroundColor Green;
                        $Result | Add-Member -MemberType NoteProperty -Name "RPC" -Value "Online"
-                       #$Results += $Result       
                        }
                    catch {
-                       #Write-Host "RPC connection on computer $Computer failed: $_" -ForegroundColor Red
                        $Result | Add-Member -MemberType NoteProperty -Name "RPC" -Value "Error: $_"
-                       #$Results += $Result       
                        }
-                      }
+                   
+      #     Uptime Try/Catch             
+                   try {
+                    $uptime = (Get-Uptime -ComputerName $Computer -Credential $mycreds)
+                    $Result | Add-Member -MemberType NoteProperty -Name "Uptime (DD:HH:MM)" -Value $uptime
+                    }
+                   catch{
+                    $Result | Add-Member -MemberType NoteProperty -Name "Uptime (DD:HH:MM)" -Value "Unknown"
+                   }
+
+
+                    try {
+                        $PendingReboot = (Get-PendingReboot -ComputerName $Computer -Credential $mycreds -ErrorAction Stop)
+                        $Result | Add-Member -MemberType NoteProperty -Name "Pending Reboot" -Value $pendingreboot
+                    }
+                    catch {
+                        $_
+                    }
             }
-#COMMENT OUT - TESTING CREDENTIALS        }
 
-       try {
-       $RDPOnline = (Test-Port $Computer -Port 3389 -ErrorAction Stop)
-       Switch ($RDPOnline) {
-       "False" {
-            $Result | Add-Member -MemberType NoteProperty -Name "RDP" -Value "Down"
-            }
-       "True" {
-            $Result | Add-Member -MemberType NoteProperty -Name "RDP" -Value "Up"
-            }
-          }
-        }
-       catch {
-       Write-Host $_
-       }
+         
+}           
+                
 
-
-if ($RPCOnline -eq $true <#-and $RunAsUser -eq $True#>) {
-       try {
-       $uptime = (Get-Uptime -ComputerName $Computer -Credential $Credential)
-       $Result | Add-Member -MemberType NoteProperty -Name "Uptime (DD:HH:MM)" -Value $uptime
-       }
-       catch {
-       $Result | Add-Member -MemberType NoteProperty -Name "Uptime (DD:HH:MM)" -Value $_
-       }
     }
-<#
-elseif ($RPCOnline -eq $true) {
        
-       try {
-       $uptime = (Get-Uptime -ComputerName $Computer -Credential $Mycreds )
-       $Result | Add-Member -MemberType NoteProperty -Name "Uptime (DD:HH:MM)" -Value $uptime
-       }
-       
-       catch {
-       $Result | Add-Member -MemberType NoteProperty -Name "Uptime (DD:HH:MM)" -Value $_
-       }
-}
-#>
-
-else {
-       $Result | Add-Member -MemberType NoteProperty -Name "Uptime (DD:HH:MM)" -Value "Unknown"
-}
-       
-       #Clear pending reboot to avoid false positives
-       
-       $PendingReboot = $null 
-
-
-    if ($Mycreds -eq $null) {       
-       try {
-       (Get-PendingReboot -ComputerName $Computer -ErrorAction Stop | Out-Null)
-       $PendingReboot = (Get-PendingReboot -ComputerName $Computer -ErrorAction Stop)
-       }
-       catch {
-       $Result | Add-Member -MemberType NoteProperty -Name "Reboot Required" -Value $_
-       }
-    }
-
-
-### need to fix logic below for wsman test followed by reboot check ###
-
-
-else {       
-       try {
-       $WSManOnline = (Test-Port $Computer -Port 5985 -ErrorAction Stop)
-       Switch ($WSManOnline) {
-       "False" {
-       $Result | Add-Member -MemberType NoteProperty -Name "Reboot Required" -Value 'Unknown'
-       }
-       "True" {
-       $PendingReboot = (Get-PendingReboot -ComputerName $Computer -Credential $mycreds -ErrorAction Stop)
-       $Result | Add-Member -MemberType NoteProperty -Name "Reboot Required" -Value 'True'
-       }
-       Default {
-       $Result | Add-Member -MemberType NoteProperty -Name "Reboot Required" -Value 'Unkown'
-       }
-       }
-       }
-       catch {
-       $Result | Add-Member -MemberType NoteProperty -Name "Reboot Required" -Value $_
-       }
-    }
-  }
     else {
             # Computer doesn't even respond to ping..."
             $Result | Add-Member -MemberType NoteProperty -Name "Ping Result" -Value "Failed"
