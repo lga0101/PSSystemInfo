@@ -76,7 +76,12 @@ Try {
       ## Making registry connection to the local/remote computer 
       $HKLM = [UInt32] "0x80000002" 
       $WMI_Reg = [WMIClass] "\\$Computer\root\default:StdRegProv" 
-             
+
+
+<#### Adding test for WMI reg calls
+$wmi_reg = Get-Wmiobject -list "StdRegProv" -namespace root\default -Computername $computer -Credential danielm1
+$value = $wmi_reg.GetStringValue($HKEY_Local_Machine,$key,$valuename).svalue
+#>            
       ## If Vista/2008 & Above query the CBS Reg Key 
       If ([Int32]$WMI_OS.BuildNumber -ge 6001) { 
         $RegSubKeysCBS = $WMI_Reg.EnumKey($HKLM,"SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\") 
