@@ -52,7 +52,10 @@ param
   $ErrorLog,
 
   [Parameter()]
-  $Credential
+  $Credential,
+
+  [Switch]
+  $Debugging
 
   ) 
  
@@ -161,25 +164,30 @@ Try {
       } | Select-Object @SelectSplat 
 
 
-    If ($results.rebootpending -eq $true) {
-    Return "Reboot Pending"
+if ($debugging) {$results}
+
+elseIf ($results.rebootpending -eq $true) {
+    Return "Pending Reboot"
     }
-    elseif ($results.rebootpending -eq $false) {
+elseif ($results.rebootpending -eq $false) {
+    #Return "$results"
     Return ""
     }
-    else {
+else {
     Return "Unknown"
     }
 }
+
   
 Catch { 
       #Write-Warning "$Computer`: $_"
-      Return "Unknown" 
+      Return $_
       ## If $ErrorLog, log the file to a user specified location/path 
       If ($ErrorLog) { 
     Out-File -InputObject "$Computer`,$_" -FilePath $ErrorLog -Append 
       }         
   }       
+
   }## End Foreach ($Computer in $ComputerName)       
 }## End Process 
  
