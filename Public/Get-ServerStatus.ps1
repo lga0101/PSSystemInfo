@@ -212,6 +212,6 @@ $Results | Export-Csv -NoTypeInformation -Path "$ReportsDir\$Reportname"
 Write-Host "Report exported to $ReportsDir\$Reportname" -BackgroundColor DarkGreen
 }
 else {
-$Results | ft *
+$Results | ft * -AutoSize
 }
 }
