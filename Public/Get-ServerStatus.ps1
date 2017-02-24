@@ -61,8 +61,12 @@ Param(
 
     [Parameter()]
     [int32]
-    $OptionalPort 
+    $OptionalPort,
     
+    [Parameter()]
+    [string]
+    $ErrorLog
+
     )
 
 if ($ExportPath -eq $null) {
@@ -73,6 +77,17 @@ else {
 $ReportsDir = $ExportPath
 $WriteReport = $true
 }
+
+if ($ErrorLog) {
+try {
+    Import-Module PSLogging -ErrorAction Stop
+    Write-Host $Logging
+    }
+catch {
+    Write-Host "Logging disabled, module not loaded"
+}
+}
+
 
 if ($WriteReport -eq $true -and (!(Test-Path $ReportsDir)) ) {
     New-Item -Path $ReportsDir -ItemType Directory | Out-Null 
@@ -179,10 +194,17 @@ $PendingReboot = $null
 
                     try {
                         $PendingReboot = (Get-PendingReboot -ComputerName $Computer -Credential $mycreds -ErrorAction Stop)
+                        if ($PendingReboot -eq "" -or $PendingReboot -eq "Unknown" -or $PendingReboot -eq "Pending Reboot") {
+                        #Write-Host $PendingReboot -BackgroundColor Red
                         $Result | Add-Member -MemberType NoteProperty -Name "Pending Reboot" -Value $pendingreboot
+                        }
+                        else {
+                        
+                        }
                     }
                     catch {
                         $Result | Add-Member -MemberType NoteProperty -Name "Pending Reboot" -Value $_
+                        Write-Host $PendingReboot -BackgroundColor Yellow
                     }
             }
 
@@ -212,6 +234,7 @@ $Results | Export-Csv -NoTypeInformation -Path "$ReportsDir\$Reportname"
 Write-Host "Report exported to $ReportsDir\$Reportname" -BackgroundColor DarkGreen
 }
 else {
-$Results | ft * -AutoSize
+$Results | ft *
+$PendingReboot
 }
 }
