@@ -105,7 +105,7 @@ $RunAsUser = $null
 
 if ($User -eq $null -and $Pass -eq $null) { 
 $RunAsUser = $True
-#$mycreds = $null
+$mycreds = $null
 }
 
 elseif ($User -ne $null -and $Pass -eq $null) {
@@ -235,6 +235,5 @@ Write-Host "Report exported to $ReportsDir\$Reportname" -BackgroundColor DarkGre
 }
 else {
 $Results | ft *
-$PendingReboot
 }
 }
