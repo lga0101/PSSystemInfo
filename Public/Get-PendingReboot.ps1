@@ -52,7 +52,10 @@ param
   $ErrorLog,
 
   [Parameter()]
-  $Credential,
+  [ValidateNotNull()]
+  [System.Management.Automation.PSCredential]
+  [System.Management.Automation.Credential()]
+  $Credential = [System.Management.Automation.PSCredential]::Empty,
 
   [Switch]
   $Debugging
@@ -127,7 +130,7 @@ Try {
       } Catch [System.UnauthorizedAccessException] { 
     $CcmStatus = Get-Service -Name CcmExec -ComputerName $Computer -ErrorAction SilentlyContinue 
     If ($CcmStatus.Status -ne 'Running') { 
-        Write-Warning "$Computer`: Error - CcmExec service is not running." 
+        #Write-Warning "$Computer`: Error - CcmExec service is not running." 
         $CCMClientSDK = $null 
     } 
       } Catch { 
