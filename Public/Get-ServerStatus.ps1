@@ -9,15 +9,15 @@
 .PARAMETER ComputerName
     Defines the computer name or IP address to test against. Could be an array of server names.
 .PARAMETER User
-    User
+    Username 
 .PARAMETER Pass
-    Pass
+    Password
 .NOTES
     File Name    : Get-ServerStatus.ps1
     Author       : Marcus Daniels - danielm1@mskcc.org
     Adapted From : RPC-Ping.ps1 by Fabrice ZERROUKI - fabricezerrouki@hotmail.com
 .EXAMPLE
-    PS D:\> Get-ServerStatus.ps1 -ComputerList C:\servers.txt -ExportPath G:\Reports
+    PS D:\> Get-ServerStatus.ps1 -ComputerList C:\servers.txt -ExportPath C:\Reports\
     Get server status from a list of servers and export to a CSV at the defined path. 
 .EXAMPLE
     PS D:\> Get-ServerStatus.ps1 -ComputerName SERVER1
@@ -85,7 +85,7 @@ try {
     }
 catch {
     Write-Host "Logging disabled, module not loaded"
-}
+    }
 }
 
 
@@ -103,20 +103,25 @@ $RunAsUser = $null
 
 # Authentication logic
 
-if ($User -eq $null -and $Pass -eq $null) { 
-$RunAsUser = $True
-$mycreds = $null
+if ($User -and $Pass) {
+Write-Host "Both"
+$Pass = ConvertTo-SecureString -String $Pass -AsPlainText -Force
+$Mycreds = New-Object System.Management.Automation.PSCredential ($User, $Pass)
 }
 
 elseif ($User -ne $null -and $Pass -eq $null) {
+Write-Host "Prompt"
 $Pass = Read-Host "Enter Password" -AsSecureString
 $Mycreds = New-Object System.Management.Automation.PSCredential ($User, $Pass)
 }
 
-elseif ($User -and $Pass) {
-$Pass = ConvertTo-SecureString -String $Pass -AsPlainText -Force
-$Mycreds = New-Object System.Management.Automation.PSCredential ($User, $Pass)
+#elseif ($User -eq $null -and $Pass -eq $null) { 
+else { 
+$RunAsUser = $True
+#$mycreds = $null
 }
+
+
 
 # Create an empty array for our end results #
 $Results = @()
@@ -188,9 +193,9 @@ ForEach ($Computer in $ComputerName) {
                     $Result | Add-Member -MemberType NoteProperty -Name "Uptime (DD:HH:MM)" -Value "Unknown"
                    }
 
-#  Pending Reboot Try/Catch - clear pending reboot to avoid false positives
+      #  Pending Reboot Try/Catch - clear pending reboot to avoid false positives
 
-$PendingReboot = $null
+                    $PendingReboot = $null
 
                     try {
                         $PendingReboot = (Get-PendingReboot -ComputerName $Computer -Credential $mycreds -ErrorAction Stop)
@@ -230,7 +235,7 @@ $Results += $Result
 # Export the array to the CSV report
 
 if ($WriteReport -eq $true) {
-$Results | Export-Csv -NoTypeInformation -Path "$ReportsDir\$Reportname"       
+$Results | Export-Csv -NoTypeInformation -Path "$ReportsDir\$Reportname"    
 Write-Host "Report exported to $ReportsDir\$Reportname" -BackgroundColor DarkGreen
 }
 else {
