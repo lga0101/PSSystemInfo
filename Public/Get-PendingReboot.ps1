@@ -120,7 +120,8 @@ Try {
         NameSpace='ROOT\ccm\ClientSDK' 
         Class='CCM_ClientUtilities' 
         Name='DetermineIfRebootPending' 
-        ComputerName=$Computer 
+        ComputerName=$Computer
+        Credential=$Credential 
         ErrorAction='Stop' 
         } 
       ## Try CCMClientSDK 
