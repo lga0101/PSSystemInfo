@@ -182,7 +182,7 @@ elseIf ($results.rebootpending -eq $true) {
     }
 elseif ($results.rebootpending -eq $false) {
     #Return "$results"
-    Return ""
+    Return "False"
     }
 else {
     Return "Unknown"
