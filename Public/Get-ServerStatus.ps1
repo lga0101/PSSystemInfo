@@ -118,7 +118,7 @@ $Mycreds = New-Object System.Management.Automation.PSCredential ($User, $Pass)
 #elseif ($User -eq $null -and $Pass -eq $null) { 
 else { 
 $RunAsUser = $True
-#$mycreds = $null
+$mycreds = [System.Management.Automation.PSCredential]::Empty
 }
 
 
