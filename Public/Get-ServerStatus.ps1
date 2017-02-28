@@ -56,35 +56,56 @@ Param(
     $Credential = [System.Management.Automation.PSCredential]::Empty,
 #>
     [Parameter()]
-    [string[]]
+    [string]
     $ExportPath,
 
     [Parameter()]
     [int32]
     $OptionalPort,
     
-    [Parameter()]
-    [string]
+    [switch]
     $ErrorLog
 
     )
+
+$time = (Get-Date -UFormat %H.%M.%S)
+
+
+$ExtensionCheck = $null
+
+Get-Extension
+
+do { 
+    $ExportPath = Read-Host "Invalid path or directory. Filenames are not allowed"
+    Write-Host $ExportPath
+    Get-Extension
+    $ExtensionCheck
+    }
+while ($ExtensionCheck -eq "True")
 
 if ($ExportPath -eq $null) {
 $ReportsDir = $ExportPath
 $WriteReport = $false
 }
+
 else {
 $ReportsDir = $ExportPath
 $WriteReport = $true
+if ($ReportsDir[-1] -eq "\") {
+    $ReportsDir = $ReportsDir.Substring(0,$ExportPath.Length-1)
+    }  
 }
 
 if ($ErrorLog) {
 try {
-    Import-Module PSLogging -ErrorAction Stop
-    Write-Host $Logging
+    Import-Module PSLogging -ErrorAction Stop 
+    $LogPath = ".\"
+    $LogName = “ServerStatus_ErrorLog_" + (Get-Date -Format MM.dd.yyyy) + "_$time.log”
+    Start-Log -LogPath $LogPath -LogName $LogName -ScriptVersion “1.0” | Out-Null
+    $Log = $LogPath + $LogName
     }
 catch {
-    Write-Host "Logging disabled, module not loaded"
+    Write-Host $_
     }
 }
 
@@ -104,7 +125,6 @@ $RunAsUser = $null
 # Authentication logic
 
 if ($User -and $Pass) {
-Write-Host "Both"
 $Pass = ConvertTo-SecureString -String $Pass -AsPlainText -Force
 $Mycreds = New-Object System.Management.Automation.PSCredential ($User, $Pass)
 }
@@ -121,13 +141,10 @@ $RunAsUser = $True
 $mycreds = [System.Management.Automation.PSCredential]::Empty
 }
 
-
-
 # Create an empty array for our end results #
 $Results = @()
 
 # Set the report filename #
-$time = (Get-Date -UFormat %H.%M.%S)
 $Reportname = "ServerStatusReport_" + (Get-Date -Format MM.dd.yyyy) + "_$time.csv"
 
 # Begin main for loop on the computer array
@@ -203,13 +220,17 @@ ForEach ($Computer in $ComputerName) {
                         #Write-Host $PendingReboot -BackgroundColor Red
                         $Result | Add-Member -MemberType NoteProperty -Name "Pending Reboot" -Value $pendingreboot
                         }
+                        elseif ($PendingReboot -eq "False") {
+                        $Result | Add-Member -MemberType NoteProperty -Name "Pending Reboot" -Value ""
+                        }
                         else {
-                        
+                        $Result | Add-Member -MemberType NoteProperty -Name "Pending Reboot" -Value "Error"
+                        Write-LogError -LogPath $Log -Message “$Computer : Error: $_ ” -ErrorAction SilentlyContinue -TimeStamp | Out-Null
                         }
                     }
                     catch {
-                        $Result | Add-Member -MemberType NoteProperty -Name "Pending Reboot" -Value $_
-                        Write-Host $PendingReboot -BackgroundColor Yellow
+                        $Result | Add-Member -MemberType NoteProperty -Name "Pending Reboot Catch" -Value "Error"
+                        Write-LogError -LogPath $Log -Message “$Computer : Error: $_ ” -ErrorAction SilentlyContinue -TimeStamp | Out-Null
                     }
             }
 
