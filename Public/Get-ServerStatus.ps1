@@ -70,33 +70,37 @@ Param(
 
 $time = (Get-Date -UFormat %H.%M.%S)
 
-
 $ExtensionCheck = $null
 
-Get-Extension
-
-do { 
-    $ExportPath = Read-Host "Invalid path or directory. Filenames are not allowed"
-    Write-Host $ExportPath
-    Get-Extension
-    $ExtensionCheck
-    }
-while ($ExtensionCheck -eq "True")
-
-if ($ExportPath -eq $null) {
+if ($ExportPath) {
+    $WriteReport = $true
+    $ExtensionCheck = (Get-Extension -ExportPath $ExportPath)
+    Switch ($ExtensionCheck) {
+    "True" {
+            do { 
+                $ExportPath = Read-Host "Invalid path or directory. Filenames are not allowed"
+                $ExtensionCheck = (Get-Extension -ExportPath $ExportPath)
+                }
+            while ($ExtensionCheck -eq "True")
+            }
+    "False" {
+            }
+        }
 $ReportsDir = $ExportPath
-$WriteReport = $false
 }
 
-else {
+else  {
+$WriteReport = $false
 $ReportsDir = $ExportPath
-$WriteReport = $true
-if ($ReportsDir[-1] -eq "\") {
+}
+
+
+if ($WriteReport -eq $true -and $ReportsDir[-1] -eq "\") {
     $ReportsDir = $ReportsDir.Substring(0,$ExportPath.Length-1)
     }  
-}
 
 if ($ErrorLog) {
+
 try {
     Import-Module PSLogging -ErrorAction Stop 
     $LogPath = ".\"
@@ -262,4 +266,10 @@ Write-Host "Report exported to $ReportsDir\$Reportname" -BackgroundColor DarkGre
 else {
 $Results | ft *
 }
+
+if ($ErrorLog) {
+Stop-Log -LogPath $Log
+Write-Host "Error log written to $log"
+}
+
 }
