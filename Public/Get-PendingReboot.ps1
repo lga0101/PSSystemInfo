@@ -48,9 +48,6 @@ param
   [String[]]
   $ComputerName="$env:COMPUTERNAME", 
 
-  [String]
-  $ErrorLog,
-
   [Parameter()]
   [System.Management.Automation.PSCredential]
   [System.Management.Automation.Credential()]
@@ -77,15 +74,7 @@ Try {
  
       ## Making registry connection to the local/remote computer 
       $HKLM = [UInt32] "0x80000002" 
-      
-      #$WMI_Reg = [WMIClass] "\\$Computer\root\default:StdRegProv"  #Commenting for now while I rework the credentials/WMI call.
-
-
-<#### Adding test for WMI reg calls#>
-
       $WMI_Reg = Get-Wmiobject -list "StdRegProv" -namespace root\default -Computername $computer -Credential $Credential
-      #$value = $wmi_reg.GetStringValue($HKEY_Local_Machine,$key,$valuename).svalue
-
 
       ## If Vista/2008 & Above query the CBS Reg Key 
       If ([Int32]$WMI_OS.BuildNumber -ge 6001) { 
@@ -181,24 +170,17 @@ elseIf ($results.rebootpending -eq $true) {
     Return "Pending Reboot"
     }
 elseif ($results.rebootpending -eq $false) {
-    #Return "$results"
     Return "False"
     }
 else {
     Return "Unknown"
     }
 }
-
   
 Catch { 
-      #Write-Warning "$Computer`: $_"
       Return $_
-      ## If $ErrorLog, log the file to a user specified location/path 
-      If ($ErrorLog) { 
-    Out-File -InputObject "$Computer`,$_" -FilePath $ErrorLog -Append 
       }         
-  }       
-
+      
   }## End Foreach ($Computer in $ComputerName)       
 }## End Process 
  
