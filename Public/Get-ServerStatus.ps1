@@ -48,13 +48,6 @@ Param(
     [Parameter()]
     $Pass,
 
-<#
-    [Parameter()]
-    [ValidateNotNull()]
-    [System.Management.Automation.PSCredential]
-    [System.Management.Automation.Credential()]
-    $Credential = [System.Management.Automation.PSCredential]::Empty,
-#>
     [Parameter()]
     [string]
     $ExportPath,
