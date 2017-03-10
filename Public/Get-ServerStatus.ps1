@@ -127,7 +127,6 @@ $Mycreds = New-Object System.Management.Automation.PSCredential ($User, $Pass)
 }
 
 elseif ($User -ne $null -and $Pass -eq $null) {
-Write-Host "Prompt"
 $Pass = Read-Host "Enter Password" -AsSecureString
 $Mycreds = New-Object System.Management.Automation.PSCredential ($User, $Pass)
 }
@@ -226,7 +225,7 @@ ForEach ($Computer in $ComputerName) {
                         }
                     }
                     catch {
-                        $Result | Add-Member -MemberType NoteProperty -Name "Pending Reboot Catch" -Value "Error"
+                        $Result | Add-Member -MemberType NoteProperty -Name "Pending Reboot" -Value "Error"
                         Write-LogError -LogPath $Log -Message “$Computer : Error: $_ ” -ErrorAction SilentlyContinue -TimeStamp | Out-Null
                     }
             }
@@ -261,7 +260,7 @@ $Results | ft *
 }
 
 if ($ErrorLog) {
-Stop-Log -LogPath $Log
+Stop-Log -LogPath $Log -NoExit
 Write-Host "Error log written to $log"
 }
 
