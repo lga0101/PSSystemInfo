@@ -52,14 +52,13 @@ Param(
     [string]
     $ExportPath,
 
-    [Parameter()]
-    [int32]
-    $OptionalPort,
-    
+     
     [switch]
     $ErrorLog
 
     )
+
+
 
 $time = (Get-Date -UFormat %H.%M.%S)
 
@@ -213,7 +212,6 @@ ForEach ($Computer in $ComputerName) {
                     try {
                         $PendingReboot = (Get-PendingReboot -ComputerName $Computer -Credential $mycreds -ErrorAction Stop)
                         if ($PendingReboot -eq "" -or $PendingReboot -eq "Unknown" -or $PendingReboot -eq "Pending Reboot") {
-                        #Write-Host $PendingReboot -BackgroundColor Red
                         $Result | Add-Member -MemberType NoteProperty -Name "Pending Reboot" -Value $pendingreboot
                         }
                         elseif ($PendingReboot -eq "False") {
@@ -256,7 +254,6 @@ $Results | Export-Csv -NoTypeInformation -Path "$ReportsDir\$Reportname"
 Write-Host "Report exported to $ReportsDir\$Reportname" -BackgroundColor DarkGreen
 }
 else {
-($Results | ft * | Export-Excel .\test.xlsx)
 }
 
 if ($ErrorLog) {
