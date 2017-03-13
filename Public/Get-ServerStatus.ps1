@@ -79,17 +79,15 @@ if ($ExportPath) {
     "False" {
             }
         }
-$ReportsDir = $ExportPath
 }
 
 else  {
 $WriteReport = $false
-$ReportsDir = $ExportPath
 }
 
 
-if ($WriteReport -eq $true -and $ReportsDir[-1] -eq "\") {
-    $ReportsDir = $ReportsDir.Substring(0,$ExportPath.Length-1)
+if ($WriteReport -eq $true -and $ExportPath[-1] -eq "\") {
+    $ExportPath = $ExportPath.Substring(0,$ExportPath.Length-1)
     }  
 
 if ($ErrorLog) {
@@ -107,8 +105,8 @@ catch {
 }
 
 
-if ($WriteReport -eq $true -and (!(Test-Path $ReportsDir)) ) {
-    New-Item -Path $ReportsDir -ItemType Directory | Out-Null 
+if ($WriteReport -eq $true -and (!(Test-Path $ExportPath)) ) {
+    New-Item -Path $ExportPath -ItemType Directory | Out-Null 
     }
 
 if ($PSCmdlet.ParameterSetName -eq 'ByComputerList') {
@@ -141,7 +139,7 @@ $mycreds = [System.Management.Automation.PSCredential]::Empty
 $Results = @()
 
 # Set the report filename #
-$Reportname = "ServerStatusReport_" + (Get-Date -Format MM.dd.yyyy) + "_$time.csv"
+$Reportname = "ServerStatusReport_" + (Get-Date -Format MM.dd.yyyy) + "_$time.xlsx"
 
 # Begin main for loop on the computer array
 
@@ -218,14 +216,16 @@ ForEach ($Computer in $ComputerName) {
                         elseif ($PendingReboot -eq "False") {
                         $Result | Add-Member -MemberType NoteProperty -Name "Pending Reboot" -Value ""
                         }
+                        <#
                         else {
                         $Result | Add-Member -MemberType NoteProperty -Name "Pending Reboot" -Value "Error"
-                        Write-LogError -LogPath $Log -Message “$Computer : Error: $_ ” -ErrorAction SilentlyContinue -TimeStamp | Out-Null
+                        Write-LogError -LogPath $Log -Message “$Computer : Pending Reboot Error from last else: $_ ” -ErrorAction SilentlyContinue -TimeStamp | Out-Null
                         }
+                        #>
                     }
                     catch {
                         $Result | Add-Member -MemberType NoteProperty -Name "Pending Reboot" -Value "Error"
-                        Write-LogError -LogPath $Log -Message “$Computer : Error: $_ ” -ErrorAction SilentlyContinue -TimeStamp | Out-Null
+                        Write-LogError -LogPath $Log -Message “$Computer : Pending Reboot Error from catch: $_ ” -ErrorAction SilentlyContinue -TimeStamp | Out-Null
                     }
             }
 
@@ -236,7 +236,7 @@ ForEach ($Computer in $ComputerName) {
     }
        
     else {
-            # Computer doesn't even respond to ping..."
+            # Computer doesn't even respond to ping...
             $Result | Add-Member -MemberType NoteProperty -Name "Ping Result" -Value "Failed"
         }
 
@@ -251,11 +251,13 @@ $Results += $Result
 # Export the array to the CSV report
 
 if ($WriteReport -eq $true) {
-$Results | Export-Csv -NoTypeInformation -Path "$ReportsDir\$Reportname"    
-Write-Host "Report exported to $ReportsDir\$Reportname" -BackgroundColor DarkGreen
+#$Results | Export-Csv -NoTypeInformation -Path "$ExportPath\$Reportname"    
+$Results | Export-Excel $Reportname 
+Write-Host "Report exported to $ExportPath\$Reportname" -BackgroundColor DarkGreen
 }
 else {
-($Results | ft * | Export-Excel .\test.xlsx -Force)
+#($Results | Export-Excel ((Get-Date -Format MM.dd.yyyy) + "_$time.xlsx"))
+$Results | fl *
 }
 
 if ($ErrorLog) {
