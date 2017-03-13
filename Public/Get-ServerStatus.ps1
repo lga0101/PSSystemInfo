@@ -59,6 +59,7 @@ Param(
     )
 
 
+Import-Module ImportExcel
 
 $time = (Get-Date -UFormat %H.%M.%S)
 
@@ -254,6 +255,7 @@ $Results | Export-Csv -NoTypeInformation -Path "$ReportsDir\$Reportname"
 Write-Host "Report exported to $ReportsDir\$Reportname" -BackgroundColor DarkGreen
 }
 else {
+($Results | ft * | Export-Excel .\test.xlsx -Force)
 }
 
 if ($ErrorLog) {
