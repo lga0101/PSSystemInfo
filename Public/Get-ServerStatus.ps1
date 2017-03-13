@@ -49,14 +49,17 @@ Param(
     $Pass,
 
     [Parameter()]
-    [string]
-    $ExportPath,
+    [string[]]
+    $ExportPath=$myInvocation.MyCommand.Path,
 
      
     [switch]
     $ErrorLog
 
     )
+
+
+$ScriptDir = $myInvocation.MyCommand.Path
 
 
 Import-Module ImportExcel
@@ -94,6 +97,7 @@ if ($ErrorLog) {
 
 try {
     Import-Module PSLogging -ErrorAction Stop 
+    #$LogPath = ".\"
     $LogPath = ".\"
     $LogName = “ServerStatus_ErrorLog_" + (Get-Date -Format MM.dd.yyyy) + "_$time.log”
     Start-Log -LogPath $LogPath -LogName $LogName -ScriptVersion “1.0” | Out-Null
@@ -262,7 +266,7 @@ $Results | fl *
 
 if ($ErrorLog) {
 Stop-Log -LogPath $Log -NoExit
-Write-Host "Error log written to $log"
+Write-Host "Error log written to $log" -BackgroundColor DarkGreen
 }
 
 }
