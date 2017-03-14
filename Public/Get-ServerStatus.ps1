@@ -1,6 +1,7 @@
 ﻿<#
 .SYNOPSIS
-    Get-ServerStatus.ps1 - Test network, RPC, and RDP connections, as well as gathering uptime and pending reboot status against one or more computers.
+    Get-ServerStatus.ps1 - Test network, RPC, and RDP connections, as well as gathering uptime and 
+    pending reboot status against one or more computers.
 .DESCRIPTION
     Get-ServerStatus.ps1 - Test an RPC connection (WMI request) against one or more computer(s)
     with test-connection before to see if the computer is reachable or not first
@@ -29,37 +30,50 @@
 
 function Get-ServerStatus {
 
-[CmdletBinding(DefaultParameterSetName='ByComputerList')]
+[CmdletBinding(DefaultParameterSetName='ByComputerName')]
 
 Param(
 
     [Parameter(Mandatory = $true, ParameterSetName = 'ByComputerList')]
     [array]$ComputerList,
     
-    [Parameter(Mandatory = $true, ParameterSetName = 'ByComputerName')]
-    [array]
-    $ComputerName,
+    [Parameter(<#Mandatory = $true,#> ParameterSetName = 'ByComputerName')]
+    [array]$ComputerName="$env:COMPUTERNAME",
 
 
     [Parameter()]
-    [string[]]
-    $User,
+    [string[]]$User,
 
     [Parameter()]
     $Pass,
 
     [Parameter()]
-    [string[]]
-    $ExportPath=$myInvocation.MyCommand.Path,
+    [System.Management.Automation.PSCredential]
+    [System.Management.Automation.Credential()]
+    $Credential = [System.Management.Automation.PSCredential]::Empty,
 
-     
-    [switch]
-    $ErrorLog
+    [Parameter()]
+    [string]$ExportPath=$(Get-Location).Path,
+
+    [switch]$ErrorLog,
+
+    [switch]$ExportCSV,
+
+    [switch]$DisplayOnly
 
     )
 
+$WriteReport = $true
 
-$ScriptDir = $myInvocation.MyCommand.Path
+if ($ExportCSV -or $DisplayOnly) {
+$WriteReport = $false
+}
+
+if ($DisplayOnly -and $ExportCSV) {
+$ExportCSV = $null
+Write-Host "DisplayOnly switch set. Disabling ExportCSV, please run with one or the other"
+}
+
 
 
 Import-Module ImportExcel
@@ -68,8 +82,10 @@ $time = (Get-Date -UFormat %H.%M.%S)
 
 $ExtensionCheck = $null
 
-if ($ExportPath) {
-    $WriteReport = $true
+
+#if ($ExportPath) {
+#    write-host "export path specified"
+#    $WriteReport = $true
     $ExtensionCheck = (Get-Extension -ExportPath $ExportPath)
     Switch ($ExtensionCheck) {
     "True" {
@@ -82,15 +98,19 @@ if ($ExportPath) {
     "False" {
             }
         }
-}
-
+#}
+<#
 else  {
-$WriteReport = $false
-}
+#$WriteReport = $false
+$WriteReport = $true
+$ExportPath = (Get-Location).Path
+write-host "$exportpath should be the current working dir"
+}#>
 
 
 if ($WriteReport -eq $true -and $ExportPath[-1] -eq "\") {
     $ExportPath = $ExportPath.Substring(0,$ExportPath.Length-1)
+    write-host "debug write report file ext check, exportpath is $ExportPath"
     }  
 
 if ($ErrorLog) {
@@ -98,7 +118,7 @@ if ($ErrorLog) {
 try {
     Import-Module PSLogging -ErrorAction Stop 
     #$LogPath = ".\"
-    $LogPath = ".\"
+    $LogPath = $ExportPath
     $LogName = “ServerStatus_ErrorLog_" + (Get-Date -Format MM.dd.yyyy) + "_$time.log”
     Start-Log -LogPath $LogPath -LogName $LogName -ScriptVersion “1.0” | Out-Null
     $Log = $LogPath + $LogName
@@ -124,13 +144,13 @@ $RunAsUser = $null
 # Authentication logic
 
 if ($User -and $Pass) {
-$Pass = ConvertTo-SecureString -String $Pass -AsPlainText -Force
-$Mycreds = New-Object System.Management.Automation.PSCredential ($User, $Pass)
+$SecPass = ConvertTo-SecureString -String $Pass -AsPlainText -Force
+$Mycreds = New-Object System.Management.Automation.PSCredential ($User, $SecPass)
 }
 
 elseif ($User -ne $null -and $Pass -eq $null) {
-$Pass = Read-Host "Enter Password" -AsSecureString
-$Mycreds = New-Object System.Management.Automation.PSCredential ($User, $Pass)
+$SecPass = Read-Host "Enter Password" -AsSecureString
+$Mycreds = New-Object System.Management.Automation.PSCredential ($User, $SecPass)
 }
 
 #elseif ($User -eq $null -and $Pass -eq $null) { 
@@ -172,7 +192,7 @@ ForEach ($Computer in $ComputerName) {
          $Result | Add-Member -MemberType NoteProperty -Name "RDP" -Value "Down"
          }
     "True" {
-         $Result | Add-Member -MemberType NoteProperty -Name "RDP" -Value "Up"
+         $Result | Add-Member -MemberType NoteProperty -Name "RDP" -Value "Online"
          }
        }
      }
@@ -256,11 +276,15 @@ $Results += $Result
 
 if ($WriteReport -eq $true) {
 #$Results | Export-Csv -NoTypeInformation -Path "$ExportPath\$Reportname"    
-$Results | Export-Excel $Reportname 
+$Results | Export-Excel $ExportPath\$Reportname 
 Write-Host "Report exported to $ExportPath\$Reportname" -BackgroundColor DarkGreen
 }
-else {
-#($Results | Export-Excel ((Get-Date -Format MM.dd.yyyy) + "_$time.xlsx"))
+elseif ($ExportCSV) {
+$ReportName =  ($Reportname).Replace("xlsx","csv")
+$Resuls | ConvertTo-CSV -NoTypeInformation | Out-File $ExportPath\$Reportname
+}
+
+elseif ($DisplayOnly) {
 $Results | fl *
 }
 
