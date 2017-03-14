@@ -71,7 +71,7 @@ $WriteReport = $false
 
 if ($DisplayOnly -and $ExportCSV) {
 $ExportCSV = $null
-Write-Host "DisplayOnly switch set. Disabling ExportCSV, please run with one or the other"
+Write-Host "DisplayOnly switch set. Disabling ExportCSV, only one is allowed"
 }
 
 
