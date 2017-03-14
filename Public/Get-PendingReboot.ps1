@@ -178,7 +178,7 @@ else {
 }
   
 Catch { 
-      Return $_
+      Return "Test pending reboot catch $_"
       }         
       
   }## End Foreach ($Computer in $ComputerName)       
