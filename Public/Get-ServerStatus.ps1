@@ -34,10 +34,16 @@ function Get-ServerStatus {
 
 Param(
 
-    [Parameter(Mandatory = $true, ParameterSetName = 'ByComputerList')]
+    [Parameter(
+    Mandatory = $true, 
+    ParameterSetName = 'ByComputerList')]
     [array]$ComputerList,
     
-    [Parameter(<#Mandatory = $true,#> ParameterSetName = 'ByComputerName')]
+    [Parameter(
+    Position=0,
+    ValueFromPipeline=$true,
+    ValueFromPipelineByPropertyName=$true,
+    ParameterSetName = 'ByComputerName')]
     [array]$ComputerName="$env:COMPUTERNAME",
 
 
@@ -216,7 +222,8 @@ ForEach ($Computer in $ComputerName) {
                        $Result | Add-Member -MemberType NoteProperty -Name "RPC" -Value "Online"
                        }
                    catch {
-                       $Result | Add-Member -MemberType NoteProperty -Name "RPC" -Value "Error: $_"
+                       $Result | Add-Member -MemberType NoteProperty -Name "RPC" -Value "Error"
+                       Write-LogError -LogPath $Log -Message “$Computer : Error: $_ ” -ErrorAction SilentlyContinue -TimeStamp | Out-Null
                        }
                    
       #     Uptime Try/Catch             
@@ -226,7 +233,9 @@ ForEach ($Computer in $ComputerName) {
                     }
                    catch{
                     $Result | Add-Member -MemberType NoteProperty -Name "Uptime (DD:HH:MM)" -Value "Unknown"
+                    Write-LogError -LogPath $Log -Message “$Computer : Error: $_ ” -ErrorAction SilentlyContinue -TimeStamp | Out-Null
                    }
+
 
       #  Pending Reboot Try/Catch - clear pending reboot to avoid false positives
 
@@ -234,24 +243,25 @@ ForEach ($Computer in $ComputerName) {
 
                     try {
                         $PendingReboot = (Get-PendingReboot -ComputerName $Computer -Credential $mycreds -ErrorAction Stop)
+                        }                        
+                    catch {
+                        $Result | Add-Member -MemberType NoteProperty -Name "Pending Reboot" -Value "Error"
+                        Write-LogError -LogPath $Log -Message “$Computer : Error: $_ ” -ErrorAction SilentlyContinue -TimeStamp | Out-Null
+                        }
+
                         if ($PendingReboot -eq "" -or $PendingReboot -eq "Unknown" -or $PendingReboot -eq "Pending Reboot") {
                         $Result | Add-Member -MemberType NoteProperty -Name "Pending Reboot" -Value $pendingreboot
                         }
                         elseif ($PendingReboot -eq "False") {
                         $Result | Add-Member -MemberType NoteProperty -Name "Pending Reboot" -Value ""
                         }
-                        <#
-                        else {
-                        $Result | Add-Member -MemberType NoteProperty -Name "Pending Reboot" -Value "Error"
-                        Write-LogError -LogPath $Log -Message “$Computer : Pending Reboot Error from last else: $_ ” -ErrorAction SilentlyContinue -TimeStamp | Out-Null
-                        }
-                        #>
-                    }
-                    catch {
+                        elseif ($PedingReboot -notmatch "^\d{2}.\d{2}.\d{2}") {
                         $Result | Add-Member -MemberType NoteProperty -Name "Pending Reboot" -Value "Error"
                         Write-LogError -LogPath $Log -Message “$Computer : Pending Reboot Error from catch: $_ ” -ErrorAction SilentlyContinue -TimeStamp | Out-Null
-                    }
-            }
+                        }
+                        
+                    
+}
 
          
 }           
@@ -262,6 +272,7 @@ ForEach ($Computer in $ComputerName) {
     else {
             # Computer doesn't even respond to ping...
             $Result | Add-Member -MemberType NoteProperty -Name "Ping Result" -Value "Failed"
+            Write-LogError -LogPath $Log -Message “$Computer Error: Ping Failed ” -ErrorAction SilentlyContinue -TimeStamp | Out-Null
         }
 
 # Write this machine's results to the array    
