@@ -292,7 +292,7 @@ Write-Host "Report exported to $ExportPath\$Reportname" -BackgroundColor DarkGre
 }
 elseif ($ExportCSV) {
 $ReportName =  ($Reportname).Replace("xlsx","csv")
-$Resuls | ConvertTo-CSV -NoTypeInformation | Out-File $ExportPath\$Reportname
+$Results | ConvertTo-CSV -NoTypeInformation | Out-File $ExportPath\$Reportname
 }
 
 elseif ($DisplayOnly) {
