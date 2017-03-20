@@ -61,7 +61,7 @@ Param(
     [Parameter()]
     [string]$ExportPath=$(Get-Location).Path,
 
-    [switch]$ErrorLog,
+    #[switch]$ErrorLog,
 
     [switch]$ExportCSV,
     
@@ -138,6 +138,8 @@ if ($WriteReport -eq $true -and $ExportPath[-1] -eq "\") {
     write-host "debug write report file ext check, exportpath is $ExportPath"
     }  
 
+
+$ErrorLog = $true
 if ($ErrorLog) {
 
 try {
