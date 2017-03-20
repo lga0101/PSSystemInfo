@@ -17,8 +17,7 @@ Install-Module PSSystemInfo
 
 #### Powershell V4 and Earlier
 
-* Download ZIP and extract to one of your PSModulePath's
-
+* Download ZIP and extract to one of your Powershell Modules folder
 
 ## Usage and Examples
 
@@ -28,24 +27,33 @@ Install-Module PSSystemInfo
 
 Get-ServerStatus 
 
-
 ```
 
-* Query a list of servers with error logging enabled
+* Query a list of servers and export to CSV
 
 ```powershell
 
-Get-ServerStatus -ComputerList Servers.txt -ErrorLog
-
+Get-ServerStatus -ComputerList Servers.txt -ExportCSV
 
 ```
 
-* Query a list of servers as another user (you will be prompted with a secure credential input)
+* Query a list of servers as another user (you will be prompted with a secure credential input) and export to XLSX
+
+Note: You MUST install [ImportExcel](https://github.com/dfinke/ImportExcel) in order to export to an XLSX. To do so:
+
+#### ImportExcel install
+* Powershell v5
+```powershell
+Install-Module ImportExcel -scope CurrentUser
+```
+* Powershell V4 and Earlier
+```powershell
+iex (new-object System.Net.WebClient).DownloadString('https://raw.github.com/dfinke/ImportExcel/master/Install.ps1')
+```
 
 ```powershell
 
 Get-ServerStatus -ComputerList Servers.txt -Credential AdminUser 
-
 
 ```
 
@@ -54,6 +62,5 @@ Get-ServerStatus -ComputerList Servers.txt -Credential AdminUser
 ```powershell
 
 Get-ServerStatus -ComputerList Servers.txt -User AdminUser -Pass AdminPass
-
 
 ```
