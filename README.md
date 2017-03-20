@@ -22,10 +22,38 @@ Install-Module PSSystemInfo
 
 ## Usage and Examples
 
+* Query the local machine
 
 ```powershell
 
-Get-ServerStatus -ComputerList Servers.txt 
+Get-ServerStatus 
+
+
+```
+
+* Query a list of servers with error logging enabled
+
+```powershell
+
+Get-ServerStatus -ComputerList Servers.txt -ErrorLog
+
+
+```
+
+* Query a list of servers as another user (you will be prompted with a secure credential input)
+
+```powershell
+
+Get-ServerStatus -ComputerList Servers.txt -Credential AdminUser 
+
+
+```
+
+* Query a list of servers as another user with password specified in plain text. Not best practices since the string will be insecure in memory, but useful for scripting
+
+```powershell
+
+Get-ServerStatus -ComputerList Servers.txt -User AdminUser -Pass AdminPass
 
 
 ```
