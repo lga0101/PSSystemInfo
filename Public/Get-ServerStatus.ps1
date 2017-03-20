@@ -64,30 +64,49 @@ Param(
     [switch]$ErrorLog,
 
     [switch]$ExportCSV,
-
-    [switch]$DisplayOnly
+    
+    [switch]$ExportXLSX
 
     )
 
-$WriteReport = $true
-
-if ($ExportCSV -or $DisplayOnly) {
 $WriteReport = $false
+
+if ($ExportXLSX) {
+    try {
+        Import-Module ImportExcel -ErrorAction Stop | Out-Nulll
+        }
+    catch {
+        Write-Host "`nYou must install the ImportExcel module first to export to XLSX" -BackgroundColor DarkRed -ForegroundColor White
+        if ($PSVersionTable.PSVersion.Major -ge 5) {
+            Write-Host "Choose " -NoNewline 
+            Write-Host "-ExportCSV " -BackgroundColor Yellow -ForegroundColor Black -NoNewline        
+            Write-Host "or run "  -NoNewline 
+            Write-Host "Install-Module ImportExcel -scope CurrentUser"  -BackgroundColor Yellow -ForegroundColor Black -NoNewline
+            Write-Host " to install`n" 
+        }
+        else {
+            Write-Host "Choose " -NoNewline 
+            Write-Host "-ExportCSV " -BackgroundColor Yellow -ForegroundColor Black -NoNewline        
+            Write-Host "or visit "  -NoNewline 
+            Write-Host "https://github.com/dfinke/ImportExcel "  -BackgroundColor Yellow -ForegroundColor Black -NoNewline
+            Write-Host "for install instructions" 
+        }
+        break
+        }
 }
 
-if ($DisplayOnly -and $ExportCSV) {
-$ExportCSV = $null
-Write-Host "DisplayOnly switch set. Disabling ExportCSV, only one is allowed"
+if ($ExportCSV -or $ExportXLSX) {
+$WriteReport = $true
 }
 
-
-
-Import-Module ImportExcel
+if ($ExportCSV -and $ExportXLSX) {
+$ExportXLSX = $null
+Write-Host "Multiple export options set; disabling ExportXLSX, only one is allowed"
+}
 
 $time = (Get-Date -UFormat %H.%M.%S)
 
 $ExtensionCheck = $null
-
 
 #if ($ExportPath) {
 #    write-host "export path specified"
@@ -122,7 +141,7 @@ if ($WriteReport -eq $true -and $ExportPath[-1] -eq "\") {
 if ($ErrorLog) {
 
 try {
-    Import-Module PSLogging -ErrorAction Stop 
+    #Import-Module PSLogging -ErrorAction Stop 
     #$LogPath = ".\"
     $LogPath = $ExportPath
     $LogName = “ServerStatus_ErrorLog_" + (Get-Date -Format MM.dd.yyyy) + "_$time.log”
@@ -295,7 +314,7 @@ $ReportName =  ($Reportname).Replace("xlsx","csv")
 $Results | ConvertTo-CSV -NoTypeInformation | Out-File $ExportPath\$Reportname
 }
 
-elseif ($DisplayOnly) {
+else {
 $Results | fl *
 }
 
