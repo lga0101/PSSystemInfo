@@ -140,6 +140,7 @@ if ($WriteReport -eq $true -and $ExportPath[-1] -eq "\") {
 
 
 $ErrorLog = $true
+
 if ($ErrorLog) {
 
 try {
@@ -148,7 +149,7 @@ try {
     $LogPath = $ExportPath
     $LogName = “ServerStatus_ErrorLog_" + (Get-Date -Format MM.dd.yyyy) + "_$time.log”
     Start-Log -LogPath $LogPath -LogName $LogName -ScriptVersion “1.0” | Out-Null
-    $Log = $LogPath + $LogName
+    $Log = "$LogPath\$LogName"
     }
 catch {
     Write-Host $_
@@ -313,7 +314,7 @@ Write-Host "Report exported to $ExportPath\$Reportname" -BackgroundColor DarkGre
 }
 elseif ($ExportCSV) {
 $ReportName =  ($Reportname).Replace("xlsx","csv")
-$Results | ConvertTo-CSV -NoTypeInformation | Out-File $ExportPath\$Reportname
+$Results | ConvertTo-CSV -NoTypeInformation | Out-File  "$ExportPath\$Reportname"
 }
 
 else {
@@ -322,7 +323,7 @@ $Results | fl *
 
 if ($ErrorLog) {
 Stop-Log -LogPath $Log -NoExit
-Write-Host "Error log written to $log" -BackgroundColor DarkGreen
+Write-Host "Error log written to $Log" -BackgroundColor DarkGreen
 }
 
 }
