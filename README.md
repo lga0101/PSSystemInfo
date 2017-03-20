@@ -39,21 +39,19 @@ Get-ServerStatus -ComputerList Servers.txt -ExportCSV
 
 * Query a list of servers as another user (you will be prompted with a secure credential input) and export to XLSX
 
-Note: You MUST install [ImportExcel](https://github.com/dfinke/ImportExcel) in order to export to an XLSX. To do so:
+Note: You MUST install [ImportExcel](https://github.com/dfinke/ImportExcel) in order to export to an XLSX. 
 
-#### ImportExcel install
-* Powershell v5
+
 ```powershell
+
+# ImportExcel install
+# Powershell v5
 Install-Module ImportExcel -scope CurrentUser
-```
-* Powershell V4 and Earlier
-```powershell
+
+#Powershell V4 and Earlier
 iex (new-object System.Net.WebClient).DownloadString('https://raw.github.com/dfinke/ImportExcel/master/Install.ps1')
-```
 
-```powershell
-
-Get-ServerStatus -ComputerList Servers.txt -Credential AdminUser 
+Get-ServerStatus -ComputerList Servers.txt -Credential AdminUser -ExportXLSX
 
 ```
 
