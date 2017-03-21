@@ -56,7 +56,8 @@ Param(
     [Parameter()]
     [System.Management.Automation.PSCredential]
     [System.Management.Automation.Credential()]
-    $Credential = [System.Management.Automation.PSCredential]::Empty,
+    $Credential, 
+    # = [System.Management.Automation.PSCredential]::Empty,
 
     [Parameter()]
     [string]$ExportPath=$(Get-Location).Path,
@@ -171,7 +172,13 @@ $RunAsUser = $null
 
 # Authentication logic
 
-if ($User -and $Pass) {
+if ($Credential) {
+#write-host "credential"
+#$Credential | gm
+$Mycreds = $Credential
+}
+
+elseif ($User -and $Pass) {
 $SecPass = ConvertTo-SecureString -String $Pass -AsPlainText -Force
 $Mycreds = New-Object System.Management.Automation.PSCredential ($User, $SecPass)
 }
@@ -181,10 +188,9 @@ $SecPass = Read-Host "Enter Password" -AsSecureString
 $Mycreds = New-Object System.Management.Automation.PSCredential ($User, $SecPass)
 }
 
-#elseif ($User -eq $null -and $Pass -eq $null) { 
-else { 
+elseif ($User -eq $null -and $Pass -eq $null -and $Credential -eq $null) { 
 $RunAsUser = $True
-$mycreds = [System.Management.Automation.PSCredential]::Empty
+$Mycreds = [System.Management.Automation.PSCredential]::Empty
 }
 
 # Create an empty array for our end results #
