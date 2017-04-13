@@ -313,7 +313,7 @@ $Results += $Result
 
 # Export the array to the CSV report
 
-if ($WriteReport -eq $true) {
+if ($WriteReport -eq $true -and $ExportXLSX) {
 #$Results | Export-Csv -NoTypeInformation -Path "$ExportPath\$Reportname"    
 $Results | Export-Excel $ExportPath\$Reportname 
 Write-Host "Report exported to $ExportPath\$Reportname" -BackgroundColor DarkGreen
